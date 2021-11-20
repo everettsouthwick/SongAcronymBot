@@ -45,6 +45,19 @@ namespace SongAcronymBot.Api.Services
                 i++;
             }
 
+            req.Offset = 0;
+            req.IncludeGroupsParam = ArtistsAlbumsRequest.IncludeGroups.Single;
+            var singles = await client.Artists.GetAlbums(GetIdFromUrl(request.SpotifyUrl), req);
+
+            i = 1;
+            while (singles.Items.Count < singles.Total)
+            {
+                req.Offset = i * 50;
+                singles.Items.AddRange((await client.Artists.GetAlbums(GetIdFromUrl(request.SpotifyUrl), req)).Items);
+                i++;
+            }
+            albums.Items.AddRange(singles.Items);
+
             albums.Items = CleanAlbums(albums.Items);
             foreach (var album in albums.Items)
             {
