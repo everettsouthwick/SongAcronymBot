@@ -181,37 +181,89 @@ namespace SongAcronymBot.Core.Services
             index = body.IndexOf(acronymName);
             if (index != -1)
             {
-                var matchStart = index == 0 ? 0 : index - 1;
-                var match = body.Substring(matchStart, acronymName.Length + 2);
-                match = String.Concat(Array.FindAll(match.ToCharArray(), Char.IsLetterOrDigit));
+                try
+                {
+                    var matchStart = index == 0 ? 0 : index - 1;
+                    var match = body.Substring(matchStart, acronymName.Length + 2);
+                    match = String.Concat(Array.FindAll(match.ToCharArray(), Char.IsLetterOrDigit));
 
-                if (match == acronymName)
-                    if (!IsAlreadyReplied(comment, acronym) && !IsAlreadyDefined(comment, acronym))
-                    {
-                        if (DEBUG)
-                            Console.WriteLine($"DEBUG :: MATCHED WORD: {match}");
-                        return true;
-                    }
-                        
+                    if (match == acronymName)
+                        if (IsUnrepliedAndUndefined(comment, acronym))
+                        {
+                            if (DEBUG)
+                                Console.WriteLine($"DEBUG :: MATCHED WORD: {match}");
+                            return true;
+                        }
+                }
+                catch (Exception ex)
+                {
+                    // Do nothing
+                }
             }
 
             return false;
         }
 
-        private bool IsAlreadyReplied(Comment comment, Acronym acronym)
+        private bool IsUnrepliedAndUndefined(Comment comment, Acronym acronym)
+        {
+            var acronymName = acronym?.AcronymName.ToLower();
+            var definition = acronym?.AcronymType switch
+            {
+                Repository.Enum.AcronymType.Album => acronym?.AlbumName,
+                Repository.Enum.AcronymType.Artist => acronym?.ArtistName,
+                Repository.Enum.AcronymType.Single => acronym?.TrackName,
+                Repository.Enum.AcronymType.Track => acronym?.TrackName,
+                _ => acronym?.TrackName
+            };
+
+            var root = comment.Root;
+            var replies = root.Comments.GetComments();
+
+            if (root.Title.ToLower().Contains(definition) || comment.Body.ToLower().Contains(definition) || comment.Subreddit.ToLower().Contains(definition))
+                return false;
+
+            foreach (var reply in replies)
+            {
+                if (reply.Author.ToLower() == "songacronymbot" && reply.Body.ToLower().Contains(acronymName))
+                    return false;
+
+                if (reply.NumReplies > 0)
+                {
+                    var subReplies = reply.replies;
+                    foreach (var subReply in subReplies)
+                    {
+                        if (subReply.Author.ToLower() == "songacronymbot" && reply.Body.ToLower().Contains(acronymName))
+                            return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        private bool IsUnreplied(Comment comment, Acronym acronym)
         {
             var replies = comment.Root.Comments.GetComments();
 
             foreach (var reply in replies)
             {
-                if (reply.IsSubmitter && reply.Body.ToLower().Contains(acronym.AcronymName.ToLower()))
-                    return true;
+                if (reply.Author.ToLower() == "songacronymbot" && reply.Body.ToLower().Contains(acronym.AcronymName.ToLower()))
+                    return false;
+
+                if (reply.NumReplies > 0)
+                {
+                    foreach (var subReply in reply.Replies)
+                    {
+                        if (subReply.Author.ToLower() == "songacronymbot" && subReply.Body.ToLower().Contains(acronym.AcronymName.ToLower()))
+                            return false;
+                    }
+                }
             }
 
-            return false;
+            return true;
         }
 
-        private bool IsAlreadyDefined(Comment comment, Acronym acronym)
+        private bool IsUndefined(Comment comment, Acronym acronym)
         {
             var definition = acronym.AcronymType switch
             {
@@ -226,15 +278,15 @@ namespace SongAcronymBot.Core.Services
             var root = comment.Root;
 
             if (root.Title.ToLower().Contains(definition) || comment.Body.ToLower().Contains(definition) || comment.Subreddit.ToLower().Contains(definition))
-                return true;
+                return false;
             
             foreach (var reply in comment.Comments.GetComments())
             {
                 if (reply.Body.ToLower().Contains(definition))
-                    return true;
+                    return false;
             }
 
-            return false;
+            return true;
         }
 
         //private bool ShouldDelete(Comment comment)
