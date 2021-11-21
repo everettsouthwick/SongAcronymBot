@@ -24,9 +24,10 @@ namespace SongAcronymBot.Core.Services
         private readonly IRedditorRepository _redditorRepository;
         private readonly ISubredditRepository _subredditRepository;
 
+        private RedditClient Reddit;
         private List<Redditor> DisabledRedditors;
 
-        private const bool DEBUG = false;
+        private const bool DEBUG = true;
 
         public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository)
         {
@@ -37,12 +38,13 @@ namespace SongAcronymBot.Core.Services
 
         public async Task StartAsync(RedditClient reddit)
         {
+            Reddit = reddit;
             DisabledRedditors = await _redditorRepository.GetAllDisabled();
 
             // Monitor our new unread messages for mentions
-            //reddit.Account.Messages.GetMessagesUnread();
-            //reddit.Account.Messages.MonitorUnread();
-            //reddit.Account.Messages.UnreadUpdated += Messages_UnreadUpdated;
+            reddit.Account.Messages.GetMessagesUnread();
+            reddit.Account.Messages.MonitorUnread();
+            reddit.Account.Messages.UnreadUpdated += Messages_UnreadUpdated;
 
             // Monitor all tracked subreddits for potential matches
             var subreddits = reddit.Subreddit(await GetMultiredditStringAsync());
@@ -56,7 +58,26 @@ namespace SongAcronymBot.Core.Services
 
         private async Task ProcessMessageAsync(Reddit.Things.Message message)
         {
+            if (IsNotSummon(message))
+                return;
 
+            var matches = await FindAcronymsAsync(message);
+
+            if (!matches.Any())
+                return;
+
+            var replyBody = "";
+            foreach (var match in matches)
+            {
+                replyBody += match.CommentBody;
+            }
+            replyBody = FormatReplyBodyWithFooter(replyBody);
+
+            if (DEBUG)
+                Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
+
+            var comment = Reddit.Comment($"t1_{message.Id}").About();
+            await comment.ReplyAsync(replyBody);
         }
 
         private async Task ProcessCommentAsync(Comment comment)
@@ -77,7 +98,7 @@ namespace SongAcronymBot.Core.Services
             {
                 replyBody += match.CommentBody;
             }
-            replyBody = FormatReplyBodyWithFooter(comment, replyBody);
+            replyBody = FormatReplyBodyWithFooter(replyBody);
 
             if (DEBUG)
                 Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
@@ -89,6 +110,14 @@ namespace SongAcronymBot.Core.Services
         {
             if (!IsRepliable(post))
                 return;
+        }
+
+        private bool IsNotSummon(Reddit.Things.Message message)
+        {
+            if (message.Subject == "username mention" && message.WasComment)
+                return false;
+
+            return true;
         }
 
         private bool IsRepliable(Comment comment)
@@ -141,7 +170,7 @@ namespace SongAcronymBot.Core.Services
                     if (DEBUG)
                         Console.WriteLine("DEBUG :: USER OPTOUT");
                     await AddOrUpdateRedditor(comment.Id, comment.Author, false);
-                    await comment.ReplyAsync(FormatReplyBodyWithFooter(comment, "- Your account has been disabled from receiving automatic replies.\n"));
+                    await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been disabled from receiving automatic replies.\n"));
                     DisabledRedditors = await _redditorRepository.GetAllDisabled();
                     return true;
                 }
@@ -150,7 +179,7 @@ namespace SongAcronymBot.Core.Services
                     if (DEBUG)
                         Console.WriteLine("DEBUG :: USER OPTIN");
                     await AddOrUpdateRedditor(comment.Id, comment.Author, true);
-                    await comment.ReplyAsync(FormatReplyBodyWithFooter(comment, "- Your account has been enabled for receiving automatic replies.\n"));
+                    await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been enabled for receiving automatic replies.\n"));
                     DisabledRedditors = await _redditorRepository.GetAllDisabled();
                     return true;
                 }
@@ -174,10 +203,47 @@ namespace SongAcronymBot.Core.Services
             return matches.OrderBy(x => x.Position).ToList();
         }
 
+        private async Task<List<AcronymMatch>> FindAcronymsAsync(Reddit.Things.Message message)
+        {
+            var matches = new List<AcronymMatch>();
+
+            var acronymsToQuery = ParseAcronymsFromMention(message);
+            var index = 1;
+            foreach (var query in acronymsToQuery)
+            {
+                var acronyms = (await _acronymRepository.GetAllByNameAsync(query)).GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
+                foreach (var acronym in acronyms)
+                    matches.Add(new AcronymMatch(acronym, index));
+
+                index++;
+            }
+
+            return matches;
+        }
+
+        private List<string> ParseAcronymsFromMention(Reddit.Things.Message message)
+        {
+            var acronymsToQuery = new List<string>();
+
+            var words = message.Body.ToUpper().Split(' ');
+
+            if (!words[0].Contains("SONGACRONYMBOT"))
+                return acronymsToQuery;
+
+            foreach (var word in words)
+            {
+                if (word.Contains("SONGACRONYMBOT"))
+                    continue;
+
+                acronymsToQuery.Add(word.Trim());
+            }
+
+            return acronymsToQuery;
+        }
         private bool IsMatch(Comment comment, Acronym acronym, out int index)
         {
             var body = comment.Body.ToLower();
-            var acronymName = acronym.AcronymName.ToLower();
+            var acronymName = acronym?.AcronymName?.ToLower();
             index = body.IndexOf(acronymName);
             if (index != -1)
             {
@@ -309,13 +375,9 @@ namespace SongAcronymBot.Core.Services
 
             return redditor;
         }
-        private string FormatReplyBodyWithFooter(Comment comment, string body)
+        private string FormatReplyBodyWithFooter(string body)
         {
             return $"{body}\n---\n\n^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
-        }
-        private string FormatReplyBodyWithFooter(Post post, string body)
-        {
-            return $"{body}\n---\n\n^[/u/{post.Author}](/u/{post.Author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
         }
     }
 }

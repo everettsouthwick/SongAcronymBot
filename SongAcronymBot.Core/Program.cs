@@ -15,7 +15,7 @@ var services = new ServiceCollection();
 
 services.AddDbContext<SongAcronymBotContext>
     (options =>
-        options.UseSqlServer(config.GetConnectionString("Default"))
+        options.UseSqlServer(config.GetConnectionString("Local"))
     );
 
 services.AddTransient<IAcronymRepository, AcronymRepository>();

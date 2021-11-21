@@ -7,8 +7,8 @@ namespace SongAcronymBot.Repository.Repositories
     public interface IAcronymRepository : IRepository<Acronym>
     {
         Task<Acronym> GetByIdAsync(int id);
-        Task<Acronym> GetByNameAsync(string name);
         Task<Acronym> GetByNameAsync(string name, string subredditId);
+        Task<List<Acronym>> GetAllByNameAsync(string name);
         Task<List<Acronym>> GetAllBySubredditIdAsync(string id);
         Task<List<Acronym>> GetAllBySubredditNameAsync(string name);
         Task<List<Acronym>> GetAllGlobalAcronyms();
@@ -32,11 +32,11 @@ namespace SongAcronymBot.Repository.Repositories
             }
         }
 
-        public async Task<Acronym> GetByNameAsync(string name)
+        public async Task<Acronym> GetByNameAsync(string name, string subredditId)
         {
             try
             {
-                return await GetAll().SingleAsync(x => x.AcronymName == name);
+                return await GetAll().SingleAsync(x => x.AcronymName == name && x.Subreddit.Id == subredditId);
             }
             catch (Exception ex)
             {
@@ -44,11 +44,11 @@ namespace SongAcronymBot.Repository.Repositories
             }
         }
 
-        public async Task<Acronym> GetByNameAsync(string name, string subredditId)
+        public async Task<List<Acronym>> GetAllByNameAsync(string name)
         {
             try
             {
-                return await GetAll().SingleAsync(x => x.AcronymName == name && x.Subreddit.Id == subredditId);
+                return await GetAll().Where(x => x.AcronymName == name).ToListAsync();
             }
             catch (Exception ex)
             {
