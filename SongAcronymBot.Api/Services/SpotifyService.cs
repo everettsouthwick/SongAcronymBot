@@ -83,10 +83,12 @@ namespace SongAcronymBot.Api.Services
 
             var album = await client.Albums.Get(isId ? request.SpotifyUrl : GetIdFromUrl(request.SpotifyUrl), req);
 
-            var mappedAlbum = await MapAlbumToAcronyms(album, request.SubredditId);
-            if (mappedAlbum != null && !acronyms.Any(x => x.AcronymName == mappedAlbum?.AcronymName))
-                acronyms.Add(mappedAlbum);
-
+            if (album.AlbumType != "single")
+            {
+                var mappedAlbum = await MapAlbumToAcronyms(album, request.SubredditId);
+                if (mappedAlbum != null && !acronyms.Any(x => x.AcronymName == mappedAlbum?.AcronymName))
+                    acronyms.Add(mappedAlbum);
+            }
 
             if (album.Tracks.Items == null)
                 throw new ArgumentNullException($"{nameof(album)} is null.");

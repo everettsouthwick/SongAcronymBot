@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<SongAcronymBotContext>
     (options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("Default"))
+        options.UseSqlServer(builder.Configuration.GetConnectionString("Production"))
     );
 
 builder.Services.AddControllers();
