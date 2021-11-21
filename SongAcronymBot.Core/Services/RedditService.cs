@@ -206,14 +206,14 @@ namespace SongAcronymBot.Core.Services
 
         private bool IsUnrepliedAndUndefined(Comment comment, Acronym acronym)
         {
-            var acronymName = acronym?.AcronymName.ToLower();
+            var acronymName = acronym?.AcronymName?.ToLower();
             var definition = acronym?.AcronymType switch
             {
-                Repository.Enum.AcronymType.Album => acronym?.AlbumName,
-                Repository.Enum.AcronymType.Artist => acronym?.ArtistName,
-                Repository.Enum.AcronymType.Single => acronym?.TrackName,
-                Repository.Enum.AcronymType.Track => acronym?.TrackName,
-                _ => acronym?.TrackName
+                Repository.Enum.AcronymType.Album => acronym?.AlbumName?.ToLower(),
+                Repository.Enum.AcronymType.Artist => acronym?.ArtistName?.ToLower(),
+                Repository.Enum.AcronymType.Single => acronym?.TrackName?.ToLower(),
+                Repository.Enum.AcronymType.Track => acronym?.TrackName?.ToLower(),
+                _ => acronym?.TrackName?.ToLower()
             };
 
             var root = comment.Root;
@@ -240,63 +240,6 @@ namespace SongAcronymBot.Core.Services
 
             return true;
         }
-
-        private bool IsUnreplied(Comment comment, Acronym acronym)
-        {
-            var replies = comment.Root.Comments.GetComments();
-
-            foreach (var reply in replies)
-            {
-                if (reply.Author.ToLower() == "songacronymbot" && reply.Body.ToLower().Contains(acronym.AcronymName.ToLower()))
-                    return false;
-
-                if (reply.NumReplies > 0)
-                {
-                    foreach (var subReply in reply.Replies)
-                    {
-                        if (subReply.Author.ToLower() == "songacronymbot" && subReply.Body.ToLower().Contains(acronym.AcronymName.ToLower()))
-                            return false;
-                    }
-                }
-            }
-
-            return true;
-        }
-
-        private bool IsUndefined(Comment comment, Acronym acronym)
-        {
-            var definition = acronym.AcronymType switch
-            {
-                Repository.Enum.AcronymType.Album => acronym.AlbumName,
-                Repository.Enum.AcronymType.Artist => acronym.ArtistName,
-                Repository.Enum.AcronymType.Single => acronym.TrackName,
-                Repository.Enum.AcronymType.Track => acronym.TrackName,
-                _ => acronym.TrackName
-            };
-            definition = definition.ToLower();
-
-            var root = comment.Root;
-
-            if (root.Title.ToLower().Contains(definition) || comment.Body.ToLower().Contains(definition) || comment.Subreddit.ToLower().Contains(definition))
-                return false;
-            
-            foreach (var reply in comment.Comments.GetComments())
-            {
-                if (reply.Body.ToLower().Contains(definition))
-                    return false;
-            }
-
-            return true;
-        }
-
-        //private bool ShouldDelete(Comment comment)
-        //{
-        //    if (comment.Body.ToLower() == "delete")
-        //    {
-        //        comment.
-        //    }
-        //    return true;
-        //}
 
         private async void Messages_UnreadUpdated(object? sender, MessagesUpdateEventArgs e)
         {
