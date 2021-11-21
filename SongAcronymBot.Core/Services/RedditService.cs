@@ -27,7 +27,7 @@ namespace SongAcronymBot.Core.Services
         private RedditClient Reddit;
         private List<Redditor> DisabledRedditors;
 
-        private const bool DEBUG = true;
+        private const bool DEBUG = false;
 
         public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository)
         {
