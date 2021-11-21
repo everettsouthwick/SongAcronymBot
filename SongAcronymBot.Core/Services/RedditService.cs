@@ -58,6 +58,9 @@ namespace SongAcronymBot.Core.Services
 
         private async Task ProcessMessageAsync(Reddit.Things.Message message)
         {
+            if (await IsDeleteAsync(message))
+                return;
+
             if (IsNotSummon(message))
                 return;
 
@@ -71,7 +74,7 @@ namespace SongAcronymBot.Core.Services
             {
                 replyBody += match.CommentBody;
             }
-            replyBody = FormatReplyBodyWithFooter(replyBody);
+            replyBody = FormatReplyBodyWithFooter(replyBody, message.Author);
 
             if (DEBUG)
                 Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
@@ -98,7 +101,7 @@ namespace SongAcronymBot.Core.Services
             {
                 replyBody += match.CommentBody;
             }
-            replyBody = FormatReplyBodyWithFooter(replyBody);
+            replyBody = FormatReplyBodyWithFooter(replyBody, comment.Author);
 
             if (DEBUG)
                 Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
@@ -118,6 +121,25 @@ namespace SongAcronymBot.Core.Services
                 return false;
 
             return true;
+        }
+
+        private async Task<bool> IsDeleteAsync(Reddit.Things.Message message)
+        {
+            if (message.Subject != "comment reply" || message.Body.ToLower() != "delete")
+                return false;
+
+            var parent = Reddit.Comment(message.ParentId).About();
+
+            if (parent.Author.ToLower() != "songacronymbot")
+                return false;
+
+            if (parent.Body.ToLower().Contains(message.Author.ToLower()))
+            {
+                await parent.DeleteAsync();
+                return true;
+            }
+
+            return false;
         }
 
         private bool IsRepliable(Comment comment)
@@ -170,7 +192,7 @@ namespace SongAcronymBot.Core.Services
                     if (DEBUG)
                         Console.WriteLine("DEBUG :: USER OPTOUT");
                     await AddOrUpdateRedditor(comment.Id, comment.Author, false);
-                    await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been disabled from receiving automatic replies.\n"));
+                    await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been disabled from receiving automatic replies.\n", comment.Author));
                     DisabledRedditors = await _redditorRepository.GetAllDisabled();
                     return true;
                 }
@@ -179,7 +201,7 @@ namespace SongAcronymBot.Core.Services
                     if (DEBUG)
                         Console.WriteLine("DEBUG :: USER OPTIN");
                     await AddOrUpdateRedditor(comment.Id, comment.Author, true);
-                    await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been enabled for receiving automatic replies.\n"));
+                    await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been enabled for receiving automatic replies.\n", comment.Author));
                     DisabledRedditors = await _redditorRepository.GetAllDisabled();
                     return true;
                 }
@@ -375,9 +397,9 @@ namespace SongAcronymBot.Core.Services
 
             return redditor;
         }
-        private string FormatReplyBodyWithFooter(string body)
+        private string FormatReplyBodyWithFooter(string body, string author)
         {
-            return $"{body}\n---\n\n^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
+            return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
         }
     }
 }
