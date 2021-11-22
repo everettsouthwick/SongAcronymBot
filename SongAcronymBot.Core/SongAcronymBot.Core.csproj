@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -29,7 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SongAcronymBot.Repository\SongAcronymBot.Repository.csproj" />
+    <ProjectReference Include="..\SongAcronymBot.Repository\SongAcronymBot.Domain.csproj" />
   </ItemGroup>
 
 </Project>

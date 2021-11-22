@@ -1,6 +1,4 @@
-﻿using SongAcronymBot.Repository.Models;
-
-namespace SongAcronymBot.Api.Requests
+﻿namespace SongAcronymBot.Domain.Models.Requests
 {
     public class SpotifyRequest
     {

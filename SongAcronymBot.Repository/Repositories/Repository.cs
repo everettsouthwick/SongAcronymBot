@@ -1,12 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SongAcronymBot.Repository.Data;
+using SongAcronymBot.Domain.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SongAcronymBot.Repository.Repositories
+namespace SongAcronymBot.Domain.Repositories
 {
     public interface IRepository<TEntity>
     {

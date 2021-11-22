@@ -1,11 +1,11 @@
-﻿using SongAcronymBot.Repository.Enum;
+﻿using SongAcronymBot.Domain.Enum;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SongAcronymBot.Repository.Models
+namespace SongAcronymBot.Domain.Models
 {
     public class Acronym
     {

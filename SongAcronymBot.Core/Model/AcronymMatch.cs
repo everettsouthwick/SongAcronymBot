@@ -1,5 +1,5 @@
-﻿using SongAcronymBot.Repository.Enum;
-using SongAcronymBot.Repository.Models;
+﻿using SongAcronymBot.Domain.Enum;
+using SongAcronymBot.Domain.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,6 +25,13 @@ namespace SongAcronymBot.Core.Model
                 AcronymType.Track => $"- {acronym.AcronymName} could mean \"{acronym.TrackName}\", a track from *{acronym.AlbumName}* ({acronym.YearReleased}) by {acronym.ArtistName}.\n",
                 _ => $"- {acronym.AcronymName} could mean {acronym.TrackName}, a track from *{acronym.AlbumName}* ({acronym.YearReleased}) by {acronym.ArtistName}.\n",
             };
+            Position = index;
+        }
+
+        public AcronymMatch(string acronymName, int index)
+        {
+            Acronym = acronymName;
+            CommentBody = $"- {acronymName} was not recognized. [Click here](https://www.reddit.com/r/songacronymbot/comments/qxsnga/new_acronym_suggestions/) to suggest this to be added.\n";
             Position = index;
         }
     }

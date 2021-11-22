@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using SongAcronymBot.Api.Services;
-using SongAcronymBot.Repository.Data;
-using SongAcronymBot.Repository.Repositories;
+using SongAcronymBot.Domain.Data;
+using SongAcronymBot.Domain.Repositories;
+using SongAcronymBot.Domain.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

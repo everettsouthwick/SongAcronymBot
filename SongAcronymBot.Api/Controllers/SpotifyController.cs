@@ -1,9 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using SongAcronymBot.Api.Requests;
-using SongAcronymBot.Api.Services;
-using SongAcronymBot.Repository.Models;
-using SongAcronymBot.Repository.Repositories;
+﻿using Microsoft.AspNetCore.Mvc;
+using SongAcronymBot.Domain.Models;
+using SongAcronymBot.Domain.Models.Requests;
+using SongAcronymBot.Domain.Repositories;
+using SongAcronymBot.Domain.Services;
 
 namespace SongAcronymBot.Api.Controllers
 {
@@ -24,7 +23,7 @@ namespace SongAcronymBot.Api.Controllers
         [HttpPost]
         public async Task<List<Acronym>>? AddArtist([FromBody] SpotifyRequest request)
         {
-            var acronyms = await _spotifyService.GetAcronymsFromSpotifyArtist(request);
+            var acronyms = await _spotifyService.GetAcronymsFromSpotifyArtistAsync(request);
             await _acronymRepository.AddRangeAsync(acronyms);
             return acronyms;
         }
@@ -33,7 +32,7 @@ namespace SongAcronymBot.Api.Controllers
         [HttpPost]
         public async Task<List<Acronym>>? AddAlbum([FromBody] SpotifyRequest request)
         {
-            var acronyms = await _spotifyService.GetAcronymsFromSpotifyAlbum(request);
+            var acronyms = await _spotifyService.GetAcronymsFromSpotifyAlbumAsync(request);
             await _acronymRepository.AddRangeAsync(acronyms);
             return acronyms;
         }
@@ -42,9 +41,17 @@ namespace SongAcronymBot.Api.Controllers
         [HttpPost]
         public async Task<List<Acronym>>? AddTrack([FromBody] SpotifyRequest request)
         {
-            var acronym = await _spotifyService.GetAcronymsFromSpotifyTrack(request);
+            var acronym = await _spotifyService.GetAcronymsFromSpotifyTrackAsync(request);
             await _acronymRepository.AddRangeAsync(acronym);
             return acronym;
+        }
+
+        [Route("search")]
+        [HttpPost]
+        public async Task<Acronym>? Search([FromBody] string acronym)
+        {
+            var result = await _spotifyService.SearchAcronymAsync(acronym);
+            return result;
         }
     }
 }

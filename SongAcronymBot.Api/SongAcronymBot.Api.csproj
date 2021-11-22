@@ -8,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Services\EnglishWords.txt" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Include="Files\ExcludedAcronyms.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -29,12 +25,11 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="6.0.0" />
-    <PackageReference Include="SpotifyAPI.Web" Version="6.2.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SongAcronymBot.Repository\SongAcronymBot.Repository.csproj" />
+    <ProjectReference Include="..\SongAcronymBot.Repository\SongAcronymBot.Domain.csproj" />
   </ItemGroup>
 
 </Project>

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SongAcronymBot.Repository", "SongAcronymBot.Repository\SongAcronymBot.Repository.csproj", "{2189096F-24EC-4B2E-8229-027D0FCDC604}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SongAcronymBot.Domain", "SongAcronymBot.Repository\SongAcronymBot.Domain.csproj", "{2189096F-24EC-4B2E-8229-027D0FCDC604}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SongAcronymBot.Api", "SongAcronymBot.Api\SongAcronymBot.Api.csproj", "{D50568D8-2883-48E2-A77B-1625E94D8191}"
 EndProject
