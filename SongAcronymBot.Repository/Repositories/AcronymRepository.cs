@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SongAcronymBot.Repository.Data;
-using SongAcronymBot.Repository.Models;
+using SongAcronymBot.Domain.Data;
+using SongAcronymBot.Domain.Models;
 
-namespace SongAcronymBot.Repository.Repositories
+namespace SongAcronymBot.Domain.Repositories
 {
     public interface IAcronymRepository : IRepository<Acronym>
     {

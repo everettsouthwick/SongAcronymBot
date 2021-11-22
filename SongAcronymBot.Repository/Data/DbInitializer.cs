@@ -1,11 +1,11 @@
-﻿using SongAcronymBot.Repository.Models;
+﻿using SongAcronymBot.Domain.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SongAcronymBot.Repository.Data
+namespace SongAcronymBot.Domain.Data
 {
     public static class DbInitializer
     {

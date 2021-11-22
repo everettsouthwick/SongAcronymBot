@@ -1,10 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using SongAcronymBot.Repository.Data;
-using SongAcronymBot.Repository.Repositories;
 using Reddit;
 using Microsoft.Extensions.Configuration;
 using SongAcronymBot.Core.Services;
+using SongAcronymBot.Domain.Data;
+using SongAcronymBot.Domain.Repositories;
+using SongAcronymBot.Domain.Services;
 
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -22,6 +23,7 @@ services.AddTransient<IAcronymRepository, AcronymRepository>();
 services.AddTransient<IRedditorRepository, RedditorRepository>();
 services.AddTransient<ISubredditRepository, SubredditRepository>();
 services.AddTransient<IRedditService, RedditService>();
+services.AddTransient<ISpotifyService, SpotifyService>();
 
 var serviceProvider = services.BuildServiceProvider();
 

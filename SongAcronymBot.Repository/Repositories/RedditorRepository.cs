@@ -1,13 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SongAcronymBot.Repository.Data;
-using SongAcronymBot.Repository.Models;
+using SongAcronymBot.Domain.Data;
+using SongAcronymBot.Domain.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SongAcronymBot.Repository.Repositories
+namespace SongAcronymBot.Domain.Repositories
 {
     public interface IRedditorRepository : IRepository<Redditor>
     {

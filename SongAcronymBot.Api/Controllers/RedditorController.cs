@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using SongAcronymBot.Repository.Models;
-using SongAcronymBot.Repository.Repositories;
+using SongAcronymBot.Domain.Models;
+using SongAcronymBot.Domain.Repositories;
 
 namespace SongAcronymBot.Api.Controllers
 {

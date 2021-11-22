@@ -1,15 +1,12 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
 using Reddit;
 using Reddit.Controllers;
 using Reddit.Controllers.EventArgs;
 using SongAcronymBot.Core.Model;
-using SongAcronymBot.Repository.Models;
-using SongAcronymBot.Repository.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using SongAcronymBot.Domain.Enum;
+using SongAcronymBot.Domain.Models;
+using SongAcronymBot.Domain.Repositories;
+using SongAcronymBot.Domain.Services;
 
 namespace SongAcronymBot.Core.Services
 {
@@ -23,17 +20,19 @@ namespace SongAcronymBot.Core.Services
         private readonly IAcronymRepository _acronymRepository;
         private readonly IRedditorRepository _redditorRepository;
         private readonly ISubredditRepository _subredditRepository;
+        private readonly ISpotifyService _spotifyService;
 
         private RedditClient Reddit;
         private List<Redditor> DisabledRedditors;
 
         private const bool DEBUG = false;
 
-        public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository)
+        public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService)
         {
             _acronymRepository = acronymRepository;
             _redditorRepository = redditorRepository;
             _subredditRepository = subredditRepository;
+            _spotifyService = spotifyService;
         }
 
         public async Task StartAsync(RedditClient reddit)
@@ -237,6 +236,15 @@ namespace SongAcronymBot.Core.Services
                 foreach (var acronym in acronyms)
                     matches.Add(new AcronymMatch(acronym, index));
 
+                if (!acronyms.Any())
+                {
+                    var acronym = await _spotifyService.SearchAcronymAsync(query);
+                    if (acronym != null)
+                        matches.Add(new AcronymMatch(acronym, index));
+                    else
+                        matches.Add(new AcronymMatch(query, index));
+                }
+
                 index++;
             }
 
@@ -297,10 +305,10 @@ namespace SongAcronymBot.Core.Services
             var acronymName = acronym?.AcronymName?.ToLower();
             var definition = acronym?.AcronymType switch
             {
-                Repository.Enum.AcronymType.Album => acronym?.AlbumName?.ToLower(),
-                Repository.Enum.AcronymType.Artist => acronym?.ArtistName?.ToLower(),
-                Repository.Enum.AcronymType.Single => acronym?.TrackName?.ToLower(),
-                Repository.Enum.AcronymType.Track => acronym?.TrackName?.ToLower(),
+                AcronymType.Album => acronym?.AlbumName?.ToLower(),
+                AcronymType.Artist => acronym?.ArtistName?.ToLower(),
+                AcronymType.Single => acronym?.TrackName?.ToLower(),
+                AcronymType.Track => acronym?.TrackName?.ToLower(),
                 _ => acronym?.TrackName?.ToLower()
             };
 
@@ -371,9 +379,9 @@ namespace SongAcronymBot.Core.Services
 
             return multireddit.TrimEnd('+');
         }
-        private async Task<List<Repository.Models.Subreddit>> GetEnabledSubredditsAsync()
+        private async Task<List<Domain.Models.Subreddit>> GetEnabledSubredditsAsync()
         {
-            return _subredditRepository.GetAll().Where(x => x.Enabled).ToList();
+            return await _subredditRepository.GetAll().Where(x => x.Enabled).ToListAsync();
         }
         private async Task<Redditor> AddOrUpdateRedditor(string id, string username, bool enabled)
         {
@@ -401,5 +409,6 @@ namespace SongAcronymBot.Core.Services
         {
             return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
         }
+        
     }
 }

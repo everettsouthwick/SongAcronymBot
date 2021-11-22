@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SongAcronymBot.Repository.Enum
+namespace SongAcronymBot.Domain.Enum
 {
     public enum AcronymType
     {

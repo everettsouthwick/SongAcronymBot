@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using SongAcronymBot.Api.Services;
-using SongAcronymBot.Repository.Models;
-using SongAcronymBot.Repository.Repositories;
+using SongAcronymBot.Domain.Models;
+using SongAcronymBot.Domain.Repositories;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
