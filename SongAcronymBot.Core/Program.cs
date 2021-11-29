@@ -28,6 +28,10 @@ services.AddTransient<ISpotifyService, SpotifyService>();
 var serviceProvider = services.BuildServiceProvider();
 
 var redditService = serviceProvider.GetService<IRedditService>();
+
+if (redditService == null)
+    throw new NullReferenceException();
+
 var reddit = new RedditClient
     (config.GetValue<string>("Reddit:AppId"),
     config.GetValue<string>("Reddit:RefreshToken"),
