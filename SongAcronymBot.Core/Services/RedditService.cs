@@ -25,7 +25,7 @@ namespace SongAcronymBot.Core.Services
         private RedditClient Reddit;
         private List<Redditor> DisabledRedditors;
 
-        private const bool DEBUG = false;
+        private const bool DEBUG = true;
 
         public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService)
         {
@@ -37,6 +37,9 @@ namespace SongAcronymBot.Core.Services
 
         public async Task StartAsync(RedditClient reddit)
         {
+            if (_acronymRepository == null || _redditorRepository == null || _subredditRepository == null || _spotifyService == null || reddit == null)
+                throw new NullReferenceException();
+
             Reddit = reddit;
             DisabledRedditors = await _redditorRepository.GetAllDisabled();
 
@@ -44,15 +47,27 @@ namespace SongAcronymBot.Core.Services
             reddit.Account.Messages.GetMessagesUnread();
             reddit.Account.Messages.MonitorUnread();
             reddit.Account.Messages.UnreadUpdated += Messages_UnreadUpdated;
+            reddit.Account.Me.GetCommentHistory();
+            reddit.Account.Me.MonitorCommentHistory();
+            reddit.Account.Me.CommentHistoryUpdated += Me_CommentHistoryUpdated;
 
             // Monitor all tracked subreddits for potential matches
             var subreddits = reddit.Subreddit(await GetMultiredditStringAsync());
             subreddits.Comments.GetNew();
             subreddits.Comments.MonitorNew();
             subreddits.Comments.NewUpdated += Comments_NewUpdated;
-            //subreddits.Posts.GetNew();
-            //subreddits.Posts.MonitorNew();
-            //subreddits.Posts.NewUpdated += Posts_NewUpdated;
+        }
+
+        #region Process Message
+
+        private async void Messages_UnreadUpdated(object? sender, MessagesUpdateEventArgs e)
+        {
+            foreach (Reddit.Things.Message message in e.Added)
+            {
+                if (DEBUG)
+                    Console.WriteLine($"DEBUG :: New unread message {message.Author} - {message.Body}");
+                await ProcessMessageAsync(message);
+            }
         }
 
         private async Task ProcessMessageAsync(Reddit.Things.Message message)
@@ -82,46 +97,6 @@ namespace SongAcronymBot.Core.Services
             await comment.ReplyAsync(replyBody);
         }
 
-        private async Task ProcessCommentAsync(Comment comment)
-        {
-            if (!IsRepliable(comment))
-                return;
-
-            if (await IsOptInOrOptOutAsync(comment))
-                return;
-
-            var matches = await FindAcronymsAsync(comment);
-
-            if (!matches.Any())
-                return;
-
-            var replyBody = "";
-            foreach(var match in matches)
-            {
-                replyBody += match.CommentBody;
-            }
-            replyBody = FormatReplyBodyWithFooter(replyBody, comment.Author);
-
-            if (DEBUG)
-                Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
-
-            await comment.ReplyAsync(replyBody);
-        }
-
-        private async Task ProcessPostAsync(Post post)
-        {
-            if (!IsRepliable(post))
-                return;
-        }
-
-        private bool IsNotSummon(Reddit.Things.Message message)
-        {
-            if (message.Subject == "username mention" && message.WasComment)
-                return false;
-
-            return true;
-        }
-
         private async Task<bool> IsDeleteAsync(Reddit.Things.Message message)
         {
             if (message.Subject != "comment reply" || message.Body.ToLower() != "delete")
@@ -141,6 +116,100 @@ namespace SongAcronymBot.Core.Services
             return false;
         }
 
+        private bool IsNotSummon(Reddit.Things.Message message)
+        {
+            if (message.Subject == "username mention" && message.WasComment)
+                return false;
+
+            return true;
+        }
+
+        private async Task<List<AcronymMatch>> FindAcronymsAsync(Reddit.Things.Message message)
+        {
+            var matches = new List<AcronymMatch>();
+
+            var acronymsToQuery = ParseAcronymsFromMention(message);
+            var index = 1;
+            foreach (var query in acronymsToQuery)
+            {
+                var acronyms = (await _acronymRepository.GetAllByNameAsync(query)).GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
+                foreach (var acronym in acronyms)
+                    matches.Add(new AcronymMatch(acronym, index));
+
+                if (!acronyms.Any())
+                {
+                    var acronym = await _spotifyService.SearchAcronymAsync(query);
+                    if (acronym != null)
+                        matches.Add(new AcronymMatch(acronym, index));
+                    else
+                        matches.Add(new AcronymMatch(query, index));
+                }
+
+                index++;
+            }
+
+            return matches;
+        }
+
+        private List<string> ParseAcronymsFromMention(Reddit.Things.Message message)
+        {
+            var acronymsToQuery = new List<string>();
+
+            var words = message.Body.ToUpper().Split(' ');
+
+            if (!words[0].Contains("SONGACRONYMBOT"))
+                return acronymsToQuery;
+
+            foreach (var word in words)
+            {
+                if (word.Contains("SONGACRONYMBOT"))
+                    continue;
+
+                acronymsToQuery.Add(word.Trim());
+            }
+
+            return acronymsToQuery;
+        }
+
+        #endregion
+
+        #region Process Comment
+        private async void Comments_NewUpdated(object? sender, CommentsUpdateEventArgs e)
+        {
+            foreach (Comment comment in e.Added)
+            {
+                if (DEBUG)
+                    Console.WriteLine($"DEBUG :: New comment {comment.Subreddit} - {comment.Root.Title}");
+                await ProcessCommentAsync(comment);
+            }
+        }
+
+        private async Task ProcessCommentAsync(Comment comment)
+        {
+            if (!IsRepliable(comment))
+                return;
+
+            if (await IsOptInOrOptOutAsync(comment))
+                return;
+
+            var matches = await FindAcronymsAsync(comment);
+
+            if (!matches.Any())
+                return;
+
+            var replyBody = "";
+            foreach (var match in matches)
+            {
+                replyBody += match.CommentBody;
+            }
+            replyBody = FormatReplyBodyWithFooter(replyBody, comment.Author);
+
+            if (DEBUG)
+                Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
+
+            await comment.ReplyAsync(replyBody);
+        }
+
         private bool IsRepliable(Comment comment)
         {
             // Do not reply to our own submissions
@@ -153,27 +222,6 @@ namespace SongAcronymBot.Core.Services
 
             // Do not reply to submissions by someone who has disabled us
             if (DisabledRedditors.Any(x => x.Username.ToLower() == comment.Author.ToLower()))
-            {
-                if (DEBUG)
-                    Console.WriteLine("DEBUG :: SKIPPING BECAUSE AUTHOR IS DISABLED");
-                return false;
-            }
-
-            return true;
-        }
-
-        private bool IsRepliable(Post post)
-        {
-            // Do not reply to our own submissions
-            if (post.Author.ToLower() == "songacronymbot")
-            {
-                if (DEBUG)
-                    Console.WriteLine("DEBUG :: SKIPPING BECAUSE AUTHOR IS SELF");
-                return false;
-            }
-
-            // Do not reply to submissions by someone who has disabled us
-            if (DisabledRedditors.Any(x => x.Username.ToLower() == post.Author.ToLower()))
             {
                 if (DEBUG)
                     Console.WriteLine("DEBUG :: SKIPPING BECAUSE AUTHOR IS DISABLED");
@@ -224,52 +272,6 @@ namespace SongAcronymBot.Core.Services
             return matches.OrderBy(x => x.Position).ToList();
         }
 
-        private async Task<List<AcronymMatch>> FindAcronymsAsync(Reddit.Things.Message message)
-        {
-            var matches = new List<AcronymMatch>();
-
-            var acronymsToQuery = ParseAcronymsFromMention(message);
-            var index = 1;
-            foreach (var query in acronymsToQuery)
-            {
-                var acronyms = (await _acronymRepository.GetAllByNameAsync(query)).GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
-                foreach (var acronym in acronyms)
-                    matches.Add(new AcronymMatch(acronym, index));
-
-                if (!acronyms.Any())
-                {
-                    var acronym = await _spotifyService.SearchAcronymAsync(query);
-                    if (acronym != null)
-                        matches.Add(new AcronymMatch(acronym, index));
-                    else
-                        matches.Add(new AcronymMatch(query, index));
-                }
-
-                index++;
-            }
-
-            return matches;
-        }
-
-        private List<string> ParseAcronymsFromMention(Reddit.Things.Message message)
-        {
-            var acronymsToQuery = new List<string>();
-
-            var words = message.Body.ToUpper().Split(' ');
-
-            if (!words[0].Contains("SONGACRONYMBOT"))
-                return acronymsToQuery;
-
-            foreach (var word in words)
-            {
-                if (word.Contains("SONGACRONYMBOT"))
-                    continue;
-
-                acronymsToQuery.Add(word.Trim());
-            }
-
-            return acronymsToQuery;
-        }
         private bool IsMatch(Comment comment, Acronym acronym, out int index)
         {
             var body = comment.Body.ToLower();
@@ -325,7 +327,7 @@ namespace SongAcronymBot.Core.Services
 
                 if (reply.NumReplies > 0)
                 {
-                    var subReplies = reply.replies;
+                    var subReplies = reply.Replies;
                     foreach (var subReply in subReplies)
                     {
                         if (subReply.Author.ToLower() == "songacronymbot" && reply.Body.ToLower().Contains(acronymName))
@@ -337,35 +339,30 @@ namespace SongAcronymBot.Core.Services
             return true;
         }
 
-        private async void Messages_UnreadUpdated(object? sender, MessagesUpdateEventArgs e)
+        #endregion
+
+        #region Process Comment Updates
+
+        private async void Me_CommentHistoryUpdated(object? sender, CommentsUpdateEventArgs e)
         {
-            foreach (Reddit.Things.Message message in e.Added)
+            if (DEBUG)
+                Console.WriteLine($"DEBUG :: New comment history activity.");
+
+            await ProcessCommentHistoryAsync(e.NewComments);
+        }
+
+        private async Task ProcessCommentHistoryAsync(List<Comment> comments)
+        {
+            foreach (var comment in comments)
             {
-                if (DEBUG)
-                    Console.WriteLine($"DEBUG :: New unread message {message.Author} - {message.Body}");
-                await ProcessMessageAsync(message);
+                if (comment.Score < 0)
+                    await comment.DeleteAsync();
             }
         }
 
-        private async void Comments_NewUpdated(object? sender, CommentsUpdateEventArgs e)
-        {
-            foreach (Comment comment in e.Added)
-            {
-                if (DEBUG)
-                    Console.WriteLine($"DEBUG :: New comment {comment.Subreddit} - {comment.Root.Title}");
-                await ProcessCommentAsync(comment);
-            }
-        }
+        #endregion
 
-        private async void Posts_NewUpdated(object? sender, PostsUpdateEventArgs e)
-        {
-            foreach (Post post in e.Added)
-            {
-                if (DEBUG)
-                    Console.WriteLine($"DEBUG :: New post {post.Subreddit} - {post.Title}");
-                await ProcessPostAsync(post);
-            }
-        }
+        #region Shared Functionality
 
         private async Task<string> GetMultiredditStringAsync()
         {
@@ -379,10 +376,12 @@ namespace SongAcronymBot.Core.Services
 
             return multireddit.TrimEnd('+');
         }
+
         private async Task<List<Domain.Models.Subreddit>> GetEnabledSubredditsAsync()
         {
             return await _subredditRepository.GetAll().Where(x => x.Enabled).ToListAsync();
         }
+
         private async Task<Redditor> AddOrUpdateRedditor(string id, string username, bool enabled)
         {
             var redditor = await _redditorRepository.GetByIdAsync(id);
@@ -405,10 +404,12 @@ namespace SongAcronymBot.Core.Services
 
             return redditor;
         }
+
         private string FormatReplyBodyWithFooter(string body, string author)
         {
             return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
         }
-        
+
+        #endregion
     }
 }
