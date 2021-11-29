@@ -38,15 +38,15 @@ namespace SongAcronymBot.Domain.Services
             if (albums.Items == null)
                 throw new ArgumentNullException($"{nameof(albums)} is null.");
 
-            var mappedArtist = await MapArtistToAcronymsAsync(albums?.Items?.First()?.Artists?.First(), request.SubredditId);
+            var mappedArtist = await MapArtistToAcronymsAsync(albums?.Items?.First()?.Artists?.First(), request?.SubredditId);
             if (mappedArtist != null)
                 acronyms.Add(mappedArtist);
 
             var i = 1;
-            while (albums.Items.Count < albums.Total)
+            while (albums?.Items.Count < albums?.Total)
             {
                 req.Offset = i * 50;
-                albums.Items.AddRange((await client.Artists.GetAlbums(GetIdFromUrl(request.SpotifyUrl), req)).Items);
+                albums?.Items.AddRange((await client.Artists.GetAlbums(GetIdFromUrl(request.SpotifyUrl), req)).Items);
                 i++;
             }
 
@@ -441,6 +441,7 @@ namespace SongAcronymBot.Domain.Services
             name = name.Replace(".", "");
             name = name.Replace("‘", "");
             name = name.Replace("’", "");
+            name = name.Replace("'", "");
             // Remove all beginning or trailing whitespace characters and uppercase the entire string.
             name = name.Trim().ToUpperInvariant();
 
