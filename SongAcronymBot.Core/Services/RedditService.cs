@@ -355,7 +355,7 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (var comment in comments)
             {
-                if (comment.Score < 0)
+                if (comment.Score <= 0)
                     await comment.DeleteAsync();
             }
         }
