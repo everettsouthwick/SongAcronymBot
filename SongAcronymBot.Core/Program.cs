@@ -14,9 +14,11 @@ var config = new ConfigurationBuilder()
 
 var services = new ServiceCollection();
 
+var debug = config.GetValue<bool>("Debug");
+
 services.AddDbContext<SongAcronymBotContext>
     (options =>
-        options.UseSqlServer(config.GetConnectionString("Local"))
+        options.UseSqlServer(debug ? config.GetConnectionString("Local") : config.GetConnectionString("Production"))
     );
 
 services.AddTransient<IAcronymRepository, AcronymRepository>();
@@ -39,4 +41,4 @@ var reddit = new RedditClient
     config.GetValue<string>("Reddit:AccessToken"),
     config.GetValue<string>("Reddit:UserAgent"));
 
-await redditService.StartAsync(reddit);
+await redditService.StartAsync(reddit, debug);
