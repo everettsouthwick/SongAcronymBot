@@ -12,7 +12,7 @@ namespace SongAcronymBot.Core.Services
 {
     public interface IRedditService
     {
-        Task StartAsync(RedditClient reddit);
+        Task StartAsync(RedditClient reddit, bool debug = false);
     }
 
     public class RedditService : IRedditService
@@ -24,8 +24,7 @@ namespace SongAcronymBot.Core.Services
 
         private RedditClient Reddit;
         private List<Redditor> DisabledRedditors;
-
-        private const bool DEBUG = true;
+        private bool Debug;
 
         public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService)
         {
@@ -35,13 +34,14 @@ namespace SongAcronymBot.Core.Services
             _spotifyService = spotifyService;
         }
 
-        public async Task StartAsync(RedditClient reddit)
+        public async Task StartAsync(RedditClient reddit, bool debug = false)
         {
             if (_acronymRepository == null || _redditorRepository == null || _subredditRepository == null || _spotifyService == null || reddit == null)
                 throw new NullReferenceException();
 
             Reddit = reddit;
             DisabledRedditors = await _redditorRepository.GetAllDisabled();
+            Debug = debug;
 
             // Monitor our new unread messages for mentions
             reddit.Account.Messages.GetMessagesUnread();
@@ -64,7 +64,7 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (Reddit.Things.Message message in e.Added)
             {
-                if (DEBUG)
+                if (Debug)
                     Console.WriteLine($"DEBUG :: New unread message {message.Author} - {message.Body}");
                 await ProcessMessageAsync(message);
             }
@@ -90,7 +90,7 @@ namespace SongAcronymBot.Core.Services
             }
             replyBody = FormatReplyBodyWithFooter(replyBody, message.Author);
 
-            if (DEBUG)
+            if (Debug)
                 Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
 
             var comment = Reddit.Comment($"t1_{message.Id}").About();
@@ -179,7 +179,7 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (Comment comment in e.Added)
             {
-                if (DEBUG)
+                if (Debug)
                     Console.WriteLine($"DEBUG :: New comment {comment.Subreddit} - {comment.Root.Title}");
                 await ProcessCommentAsync(comment);
             }
@@ -205,7 +205,7 @@ namespace SongAcronymBot.Core.Services
             }
             replyBody = FormatReplyBodyWithFooter(replyBody, comment.Author);
 
-            if (DEBUG)
+            if (Debug)
                 Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
 
             await comment.ReplyAsync(replyBody);
@@ -216,7 +216,7 @@ namespace SongAcronymBot.Core.Services
             // Do not reply to our own submissions
             if (comment.Author.ToLower() == "songacronymbot")
             {
-                if (DEBUG)
+                if (Debug)
                     Console.WriteLine("DEBUG :: SKIPPING BECAUSE AUTHOR IS SELF");
                 return false;
             }
@@ -224,7 +224,7 @@ namespace SongAcronymBot.Core.Services
             // Do not reply to submissions by someone who has disabled us
             if (DisabledRedditors.Any(x => x.Username.ToLower() == comment.Author.ToLower()))
             {
-                if (DEBUG)
+                if (Debug)
                     Console.WriteLine("DEBUG :: SKIPPING BECAUSE AUTHOR IS DISABLED");
                 return false;
             }
@@ -237,7 +237,7 @@ namespace SongAcronymBot.Core.Services
             if (comment.Root.Id.ToLower() == "j9yq8q")
                 if (comment.Body.ToLower() == "optout")
                 {
-                    if (DEBUG)
+                    if (Debug)
                         Console.WriteLine("DEBUG :: USER OPTOUT");
                     await AddOrUpdateRedditor(comment.Id, comment.Author, false);
                     await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been disabled from receiving automatic replies.\n", comment.Author));
@@ -246,7 +246,7 @@ namespace SongAcronymBot.Core.Services
                 }
                 else if (comment.Body.ToLower() == "optin")
                 {
-                    if (DEBUG)
+                    if (Debug)
                         Console.WriteLine("DEBUG :: USER OPTIN");
                     await AddOrUpdateRedditor(comment.Id, comment.Author, true);
                     await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been enabled for receiving automatic replies.\n", comment.Author));
@@ -296,7 +296,7 @@ namespace SongAcronymBot.Core.Services
                     if (match == acronymName)
                         if (IsUnrepliedAndUndefined(comment, acronym))
                         {
-                            if (DEBUG)
+                            if (Debug)
                                 Console.WriteLine($"DEBUG :: MATCHED WORD: {match}");
                             return true;
                         }
@@ -379,7 +379,7 @@ namespace SongAcronymBot.Core.Services
 
         private async void Me_CommentHistoryUpdated(object? sender, CommentsUpdateEventArgs e)
         {
-            if (DEBUG)
+            if (Debug)
                 Console.WriteLine($"DEBUG :: New comment history activity.");
 
             await ProcessCommentHistoryAsync(e.NewComments);
