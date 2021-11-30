@@ -12,7 +12,7 @@ namespace SongAcronymBot.Domain.Repositories
     public interface IRedditorRepository : IRepository<Redditor>
     {
         Task<Redditor>? GetByIdAsync(string id);
-        Task<List<Redditor>>? GetAllDisabled();
+        Task<List<Redditor>> GetAllDisabled();
     }
 
     public class RedditorRepository : Repository<Redditor>, IRedditorRepository
@@ -33,7 +33,7 @@ namespace SongAcronymBot.Domain.Repositories
             }
         }
 
-        public async Task<List<Redditor>>? GetAllDisabled()
+        public async Task<List<Redditor>> GetAllDisabled()
         {
             try
             {
