@@ -174,6 +174,7 @@ namespace SongAcronymBot.Core.Services
         #endregion
 
         #region Process Comment
+
         private async void Comments_NewUpdated(object? sender, CommentsUpdateEventArgs e)
         {
             foreach (Comment comment in e.Added)
@@ -274,15 +275,22 @@ namespace SongAcronymBot.Core.Services
 
         private bool IsMatch(Comment comment, Acronym acronym, out int index)
         {
+            index = -1;
+
             var body = comment.Body.ToLower();
             var acronymName = acronym?.AcronymName?.ToLower();
+
+            if (acronymName == null)
+                return false;
+
             index = body.IndexOf(acronymName);
             if (index != -1)
             {
                 try
                 {
                     var matchStart = index == 0 ? 0 : index - 1;
-                    var match = body.Substring(matchStart, acronymName.Length + 2);
+                    var matchLength = acronymName.Length + 2 > body.Length ? acronymName.Length : acronymName.Length + 2;
+                    var match = body.Substring(matchStart, matchLength);
                     match = String.Concat(Array.FindAll(match.ToCharArray(), Char.IsLetterOrDigit));
 
                     if (match == acronymName)
@@ -293,7 +301,7 @@ namespace SongAcronymBot.Core.Services
                             return true;
                         }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Do nothing
                 }
@@ -314,29 +322,55 @@ namespace SongAcronymBot.Core.Services
                 _ => acronym?.TrackName?.ToLower()
             };
 
-            var root = comment.Root;
-            var replies = root.Comments.GetComments();
+            if (acronymName == null || definition == null)
+                return true;
 
-            if (root.Title.ToLower().Contains(definition) || comment.Body.ToLower().Contains(definition) || comment.Subreddit.ToLower().Contains(definition))
+            var root = comment.Root;
+            var replies = GetCommentTree(root.Comments.GetComments(limit: 500));
+
+            if (root.Title.ToLower().Contains(definition))
                 return false;
 
             foreach (var reply in replies)
             {
-                if (reply.Author.ToLower() == "songacronymbot" && reply.Body.ToLower().Contains(acronymName))
+                var body = reply.Body.ToLower();
+                if ((reply.Author.ToLower() == "songacronymbot" && body.Contains(acronymName)) || body.Contains(definition))
                     return false;
-
-                if (reply.NumReplies > 0)
-                {
-                    var subReplies = reply.Replies;
-                    foreach (var subReply in subReplies)
-                    {
-                        if (subReply.Author.ToLower() == "songacronymbot" && reply.Body.ToLower().Contains(acronymName))
-                            return false;
-                    }
-                }
             }
 
             return true;
+        }
+
+        private List<Comment> GetCommentTree(List<Comment> comments)
+        {
+            var commentTree = new List<Comment>();
+            commentTree.AddRange(comments);
+
+            foreach (var comment in comments)
+            {
+                GetCommentTree(comment.Replies);
+                commentTree.AddRange(GetCommentTree(GetMoreChildren(comment, commentTree)));
+            }
+
+            return commentTree;
+        }
+
+        private List<Comment> GetMoreChildren(Comment comment, List<Comment> commentTree)
+        {
+            List<Comment> children = new List<Comment>();
+
+            if (comment.NumReplies == 0)
+                return children;
+
+            foreach (var child in comment.Replies)
+            {
+                if (!commentTree.Any(x => x.Id == child.Id))
+                {
+                    children.Add(child);
+                }
+            }
+
+            return children;
         }
 
         #endregion
