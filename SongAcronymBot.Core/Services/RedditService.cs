@@ -257,18 +257,18 @@ namespace SongAcronymBot.Core.Services
             return false;
         }
 
-        private async Task<List<AcronymMatch>> FindAcronymsAsync(Comment comment)
+        public async Task<List<AcronymMatch>> FindAcronymsAsync(Comment comment)
         {
             var matches = new List<AcronymMatch>();
 
             var acronyms = await _acronymRepository.GetAllGlobalAcronyms();
             acronyms.AddRange(await _acronymRepository.GetAllBySubredditNameAsync(comment.Subreddit.ToLower()));
 
-            Parallel.ForEach(acronyms, acronym =>
+            foreach (var acronym in acronyms)
             {
                 if (IsMatch(comment, acronym, out int index))
                     matches.Add(new AcronymMatch(acronym, index));
-            });
+            }
 
             return matches.OrderBy(x => x.Position).ToList();
         }
@@ -292,6 +292,7 @@ namespace SongAcronymBot.Core.Services
                     var matchLength = acronymName.Length + 2 > body.Length ? acronymName.Length : acronymName.Length + 2;
                     var match = body.Substring(matchStart, matchLength);
                     match = String.Concat(Array.FindAll(match.ToCharArray(), Char.IsLetterOrDigit));
+                    acronymName = String.Concat(Array.FindAll(acronymName.ToCharArray(), Char.IsLetterOrDigit));
 
                     if (match == acronymName)
                         if (IsUnrepliedAndUndefined(comment, acronym))

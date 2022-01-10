@@ -442,6 +442,9 @@ namespace SongAcronymBot.Domain.Services
             name = name.Replace("‘", "");
             name = name.Replace("’", "");
             name = name.Replace("'", "");
+            name = name.Replace("[", "");
+            name = name.Replace("]", "");
+            name = name.Replace("…", "");
             // Remove all beginning or trailing whitespace characters and uppercase the entire string.
             name = name.Trim().ToUpperInvariant();
 
