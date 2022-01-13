@@ -107,12 +107,14 @@ namespace SongAcronymBot.Core.Services
 
             var parent = Reddit.Comment(message.ParentId).About();
 
-            if (parent.Author.ToLower() != "songacronymbot")
-                return false;
-
-            if (parent.UpVotes < 5)
+            if (parent.Author.ToLower() == "songacronymbot")
             {
-                await parent.DeleteAsync();
+                if (parent.UpVotes < 5)
+                    await parent.DeleteAsync();
+
+                await AddOrUpdateRedditor(message.Id, message.Author, false);
+                DisabledRedditors = await _redditorRepository.GetAllDisabled();
+
                 return true;
             }
 
