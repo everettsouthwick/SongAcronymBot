@@ -443,7 +443,7 @@ namespace SongAcronymBot.Core.Services
 
         private async Task<Redditor> AddOrUpdateRedditor(string id, string username, bool enabled)
         {
-            var redditor = await _redditorRepository.GetByIdAsync(id);
+            var redditor = await _redditorRepository.GetByNameAsync(username);
 
             if (redditor == null)
             {
