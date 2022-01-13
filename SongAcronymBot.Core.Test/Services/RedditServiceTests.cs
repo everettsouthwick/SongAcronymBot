@@ -40,7 +40,7 @@ namespace SongAcronymBot.Core.Test.Services
         }
 
         [Fact]
-        public async Task ()
+        public async Task CommentTest()
         {
             // Arrange
             var service = CreateService();
@@ -50,7 +50,7 @@ namespace SongAcronymBot.Core.Test.Services
                 "ITmTWqKAKZJfjTm8UDJ4GVeBeEU",
                 "658227845723-ozL1JJm9PgImhB7ryd1h8DcPF5uMmg",
                 "script:songacronymbot:v1.0");
-            var comment = reddit.Comment("t1_hrs3d2f").About();
+            var comment = reddit.Comment("t1_hrzsgw2").About();
             MockGlobalAcronyms();
             MockSubredditAcronyms(comment.Subreddit.ToLower());
 
@@ -58,7 +58,7 @@ namespace SongAcronymBot.Core.Test.Services
             var acronyms = await service.FindAcronymsAsync(comment);
 
             // Assert
-            Assert.NotNull(acronyms);
+            Assert.True(acronyms.Count == 2);
         }
 
         private void MockGlobalAcronyms()
@@ -70,18 +70,25 @@ namespace SongAcronymBot.Core.Test.Services
         {
             var acronyms = new List<Acronym>
             {
-                new Acronym
-                {
-                    AcronymName = "V&V",
-                    AcronymType = Domain.Enum.AcronymType.Album,
-                    AlbumName = "Vices & Virtues",
-                    ArtistName = "Panic! At The Disco",
-                    YearReleased = "2011",
-                    Enabled = true,
-                }
+                CreateFakeAcronym("TMB"),
+                CreateFakeAcronym("HDIMYLM")
             };
 
             mockAcronymRepository.Setup(x => x.GetAllBySubredditNameAsync(subredditName)).ReturnsAsync(acronyms);
+        }
+
+        private Acronym CreateFakeAcronym(string acronym)
+        {
+            return new Acronym
+            {
+                AcronymName = acronym,
+                AcronymType = Domain.Enum.AcronymType.Track,
+                AlbumName = "Fake Album",
+                ArtistName = "Fake Artist",
+                Enabled = true,
+                TrackName = "Fake Track",
+                YearReleased = "2022"
+            };
         }
 
         [Fact]
