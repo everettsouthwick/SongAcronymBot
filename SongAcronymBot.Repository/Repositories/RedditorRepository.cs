@@ -12,6 +12,7 @@ namespace SongAcronymBot.Domain.Repositories
     public interface IRedditorRepository : IRepository<Redditor>
     {
         Task<Redditor>? GetByIdAsync(string id);
+        Task<Redditor>? GetByNameAsync(string username);
         Task<List<Redditor>> GetAllDisabled();
     }
 
@@ -26,6 +27,18 @@ namespace SongAcronymBot.Domain.Repositories
             try
             {
                 return await GetAll().SingleOrDefaultAsync(x => x.Id == id);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Couldn't retrieve entity: {ex.Message}");
+            }
+        }
+
+        public async Task<Redditor>? GetByNameAsync(string username)
+        {
+            try
+            {
+                return await GetAll().SingleOrDefaultAsync(x => x.Username == username);
             }
             catch (Exception ex)
             {
