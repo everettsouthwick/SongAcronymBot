@@ -72,6 +72,9 @@ namespace SongAcronymBot.Core.Services
 
         private async Task ProcessMessageAsync(Reddit.Things.Message message)
         {
+            if (await IsBadBotAsync(message))
+                return;
+
             if (await IsDeleteAsync(message))
                 return;
 
@@ -95,6 +98,25 @@ namespace SongAcronymBot.Core.Services
 
             var comment = Reddit.Comment($"t1_{message.Id}").About();
             await comment.ReplyAsync(replyBody);
+        }
+
+        private async Task<bool> IsBadBotAsync(Reddit.Things.Message message)
+        {
+            if (message.Subject != "comment reply" || message.Body.ToLower() != "bad bot")
+                return false;
+
+            var parent = Reddit.Comment(message.ParentId).About();
+
+            if (parent.Author.ToLower() != "songacronymbot")
+                return false;
+
+            if (parent.UpVotes < 5)
+            {
+                await parent.DeleteAsync();
+                return true;
+            }
+
+            return false;
         }
 
         private async Task<bool> IsDeleteAsync(Reddit.Things.Message message)
