@@ -134,6 +134,8 @@ namespace SongAcronymBot.Core.Services
             if (parent.Body.ToLower().Contains(message.Author.ToLower()))
             {
                 await parent.DeleteAsync();
+                await AddOrUpdateRedditor(message.Id, message.Author, false);
+                DisabledRedditors = await _redditorRepository.GetAllDisabled();
                 return true;
             }
 
