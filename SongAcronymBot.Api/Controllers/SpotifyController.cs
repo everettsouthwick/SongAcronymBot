@@ -21,11 +21,11 @@ namespace SongAcronymBot.Api.Controllers
 
         [Route("artist")]
         [HttpPost]
-        public async Task<List<Acronym>>? AddArtist([FromBody] SpotifyRequest request)
+        public async Task<List<string>>? AddArtist([FromBody] SpotifyRequest request)
         {
             var acronyms = await _spotifyService.GetAcronymsFromSpotifyArtistAsync(request);
             await _acronymRepository.AddRangeAsync(acronyms);
-            return acronyms;
+            return acronyms.Select(x => $"{x.Id}: {x.AcronymName} => {(x.TrackName == null ? x.AlbumName : x.TrackName)}").ToList();
         }
 
         [Route("album")]
