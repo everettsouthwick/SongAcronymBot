@@ -197,7 +197,7 @@ namespace SongAcronymBot.Core.Services
             return acronymsToQuery;
         }
 
-        #endregion
+        #endregion Process Message
 
         #region Process Comment
 
@@ -400,7 +400,7 @@ namespace SongAcronymBot.Core.Services
             return children;
         }
 
-        #endregion
+        #endregion Process Comment
 
         #region Process Comment Updates
 
@@ -421,7 +421,7 @@ namespace SongAcronymBot.Core.Services
             }
         }
 
-        #endregion
+        #endregion Process Comment Updates
 
         #region Shared Functionality
 
@@ -471,6 +471,6 @@ namespace SongAcronymBot.Core.Services
             return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
         }
 
-        #endregion
+        #endregion Shared Functionality
     }
 }
