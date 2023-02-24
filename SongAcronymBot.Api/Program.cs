@@ -16,6 +16,7 @@ builder.Services.AddTransient(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddTransient<IAcronymRepository, AcronymRepository>();
 builder.Services.AddTransient<IRedditorRepository, RedditorRepository>();
 builder.Services.AddTransient<ISubredditRepository, SubredditRepository>();
+builder.Services.AddTransient<IExcludedRepository, ExcludedRepository>();
 builder.Services.AddTransient<ISpotifyService, SpotifyService>();
 
 var app = builder.Build();

@@ -10,8 +10,11 @@ namespace SongAcronymBot.Domain.Services
     public interface ISpotifyService
     {
         Task<List<Acronym>>? GetAcronymsFromSpotifyArtistAsync(SpotifyRequest request);
+
         Task<List<Acronym>>? GetAcronymsFromSpotifyAlbumAsync(SpotifyRequest request, bool isId = false);
+
         Task<List<Acronym>>? GetAcronymsFromSpotifyTrackAsync(SpotifyRequest request);
+
         Task<Acronym>? SearchAcronymAsync(string acronym);
     }
 
@@ -19,12 +22,13 @@ namespace SongAcronymBot.Domain.Services
     {
         private readonly IAcronymRepository _acronymRepository;
         private readonly ISubredditRepository _subredditRepository;
-        private static List<string> ExcludedAcronyms = File.ReadAllLines($"{Directory.GetCurrentDirectory()}\\Files\\ExcludedAcronyms.txt").ToList();
+        private readonly IExcludedRepository _excludedRepository;
 
-        public SpotifyService(IAcronymRepository acronymRepository, ISubredditRepository subredditRepoistory)
+        public SpotifyService(IAcronymRepository acronymRepository, ISubredditRepository subredditRepoistory, IExcludedRepository excludedRepository)
         {
             _acronymRepository = acronymRepository;
             _subredditRepository = subredditRepoistory;
+            _excludedRepository = excludedRepository;
         }
 
         public async Task<List<Acronym>>? GetAcronymsFromSpotifyArtistAsync(SpotifyRequest request)
@@ -38,9 +42,10 @@ namespace SongAcronymBot.Domain.Services
             if (albums.Items == null)
                 throw new ArgumentNullException($"{nameof(albums)} is null.");
 
-            var mappedArtist = await MapArtistToAcronymsAsync(albums?.Items?.First()?.Artists?.First(), request?.SubredditId);
-            if (mappedArtist != null)
-                acronyms.Add(mappedArtist);
+            // We don't want to map artists
+            //var mappedArtist = await MapArtistToAcronymsAsync(albums?.Items?.First()?.Artists?.First(), request?.SubredditId);
+            //if (mappedArtist != null)
+            //    acronyms.Add(mappedArtist);
 
             var i = 1;
             while (albums?.Items.Count < albums?.Total)
@@ -90,9 +95,10 @@ namespace SongAcronymBot.Domain.Services
 
             if (album.AlbumType != "single")
             {
-                var mappedAlbum = await MapAlbumToAcronymsAsync(album, request.SubredditId);
-                if (mappedAlbum != null && !acronyms.Any(x => x.AcronymName == mappedAlbum?.AcronymName))
-                    acronyms.Add(mappedAlbum);
+                // We don't want to map albums
+                //var mappedAlbum = await MapAlbumToAcronymsAsync(album, request.SubredditId);
+                //if (mappedAlbum != null && !acronyms.Any(x => x.AcronymName == mappedAlbum?.AcronymName))
+                //    acronyms.Add(mappedAlbum);
             }
 
             if (album.Tracks.Items == null)
@@ -212,7 +218,7 @@ namespace SongAcronymBot.Domain.Services
 
             foreach (var acronymName in acronymNames)
             {
-                if (ExcludedAcronyms.Contains(acronymName))
+                if (_excludedRepository.Contains(acronymName))
                     return acronym;
 
                 if (subredditId == null && acronymName.Length < 5)
@@ -250,7 +256,7 @@ namespace SongAcronymBot.Domain.Services
 
             foreach (var acronymName in acronymNames)
             {
-                if (ExcludedAcronyms.Contains(acronymName))
+                if (_excludedRepository.Contains(acronymName))
                     return acronym;
 
                 if (subredditId == null && acronymName.Length < 5)
@@ -290,7 +296,7 @@ namespace SongAcronymBot.Domain.Services
 
             foreach (var acronymName in acronymNames)
             {
-                if (ExcludedAcronyms.Contains(acronymName))
+                if (_excludedRepository.Contains(acronymName))
                     return null;
 
                 if (subredditId == null && acronymName.Length < 5)
@@ -328,7 +334,7 @@ namespace SongAcronymBot.Domain.Services
 
             foreach (var acronymName in acronymNames)
             {
-                if (ExcludedAcronyms.Contains(acronymName))
+                if (_excludedRepository.Contains(acronymName))
                     return null;
 
                 if (subredditId == null && acronymName.Length < 5)
@@ -445,6 +451,7 @@ namespace SongAcronymBot.Domain.Services
             name = name.Replace("[", "");
             name = name.Replace("]", "");
             name = name.Replace("…", "");
+            name = name.Replace("\"", "");
             // Remove all beginning or trailing whitespace characters and uppercase the entire string.
             name = name.Trim().ToUpperInvariant();
 

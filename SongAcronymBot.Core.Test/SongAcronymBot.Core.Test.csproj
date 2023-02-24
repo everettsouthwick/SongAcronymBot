@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SongAcronymBot.Core\SongAcronymBot.Core.csproj" />
-    <ProjectReference Include="..\SongAcronymBot.Repository\SongAcronymBot.Domain.csproj" />
+    <ProjectReference Include="..\SongAcronymBot.Domain\SongAcronymBot.Domain.csproj" />
   </ItemGroup>
 
 </Project>
