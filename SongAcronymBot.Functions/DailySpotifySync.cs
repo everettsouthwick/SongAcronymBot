@@ -22,7 +22,7 @@ namespace SongAcronymBot.Functions
         }
 
         [FunctionName("DailySpotifySync")]
-        public async Task Run([TimerTrigger("0 * * * * *")] TimerInfo myTimer, ILogger log)
+        public async Task Run([TimerTrigger("0 0 0 * * *")] TimerInfo myTimer, ILogger log)
         {
             var acronyms = new List<Acronym>();
 
