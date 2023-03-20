@@ -306,7 +306,7 @@ namespace SongAcronymBot.Domain.Services
                 // If it isn't a single and it's a title track, don't add an acronym for it
                 if (album.AlbumType != "single" && track.Name == album.Name)
                 {
-                    continue;
+                    return null;
                 }
 
                 if (subredditId == null && acronymName.Length < 5)
