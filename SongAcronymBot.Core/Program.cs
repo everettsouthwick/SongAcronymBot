@@ -27,6 +27,7 @@ services.AddTransient<IRedditorRepository, RedditorRepository>();
 services.AddTransient<ISubredditRepository, SubredditRepository>();
 services.AddTransient<IRedditService, RedditService>();
 services.AddTransient<ISpotifyService, SpotifyService>();
+services.AddTransient<IExcludedRepository, ExcludedRepository>();
 services.AddTransient<IBotConfiguration, BotConfiguration>();
 
 var serviceProvider = services.BuildServiceProvider();
