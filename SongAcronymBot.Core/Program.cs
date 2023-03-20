@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Reddit;
-using Microsoft.Extensions.Configuration;
 using SongAcronymBot.Core.Services;
+using SongAcronymBot.Domain;
 using SongAcronymBot.Domain.Data;
 using SongAcronymBot.Domain.Repositories;
 using SongAcronymBot.Domain.Services;
@@ -26,6 +27,7 @@ services.AddTransient<IRedditorRepository, RedditorRepository>();
 services.AddTransient<ISubredditRepository, SubredditRepository>();
 services.AddTransient<IRedditService, RedditService>();
 services.AddTransient<ISpotifyService, SpotifyService>();
+services.AddTransient<IBotConfiguration, BotConfiguration>();
 
 var serviceProvider = services.BuildServiceProvider();
 
