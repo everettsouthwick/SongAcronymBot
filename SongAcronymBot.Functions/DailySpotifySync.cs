@@ -13,12 +13,14 @@ namespace SongAcronymBot.Functions
     public class DailySpotifySync
     {
         private readonly IAcronymRepository _acronymRepository;
+        private readonly ISubredditRepository _subredditRepository;
         private readonly ISpotifyService _spotifyService;
 
-        public DailySpotifySync(IAcronymRepository acronymRepository, ISpotifyService spotifyService)
+        public DailySpotifySync(IAcronymRepository acronymRepository, ISpotifyService spotifyService, ISubredditRepository subredditRepository)
         {
             _acronymRepository = acronymRepository;
             _spotifyService = spotifyService;
+            _subredditRepository = subredditRepository;
         }
 
         [FunctionName("DailySpotifySync")]
@@ -66,7 +68,7 @@ namespace SongAcronymBot.Functions
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/74XFHRwlV6OrjEM0A2NCMF?si=7613d312648d4ffb", "2renz"));
 
             // taylorswift
-            acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "2rlwe"));
+            acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", new List<string> { "2rlwe", "2wqat", "3jka9", "mnhlw", "s5e9b", "yfeq1", "zgobi8" }));
 
             // gorillaz
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/3AA28KZvwAUcZuOKwyblJQ?si=47d1d246ac9d4939", "2rnhi"));
@@ -110,9 +112,6 @@ namespace SongAcronymBot.Functions
             // FallOutBoy
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/4UXqAaa6dQYAk18Lv7PEgX?si=cdd06c95387a4b19", "2u7q6"));
 
-            // taylorswiftpictures
-            acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "2wqat"));
-
             // charlixcx
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/25uiPmTg16RbhZWAqwLBy5?si=e12383bb28bd43e8", "2x32d"));
 
@@ -137,23 +136,14 @@ namespace SongAcronymBot.Functions
             // lanadelreypictures
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/00FQb4jTyendYWaN8pK0wa?si=5b96ca75befe4253", "3fptd"));
 
-            // youbelongwithmemes
-            acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "3jka9"));
-
             // billieeilish
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/6qqNVTkY8uBg9cP3Jd7DAH?si=07867d049c764ff4", "3mqfo"));
 
             // ariheads
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/66CXWjxzNUsdJxJ2JdwvnR?si=d4158ebb46f548bf", "i8bq2"));
 
-            // GaylorSwift
-            acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "mnhlw"));
-
             // blackpinkmemes
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/41MozSoPIsD1dJM0CLPjZF?si=7f468d9c997f4af4", "oswpw"));
-
-            // randomactsofswift
-            acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "s5e9b"));
 
             // katyheads
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/6jJ0s89eD6GaHleKKya26X?si=8cdc048adf6a43f8", "ulk6u"));
@@ -164,16 +154,10 @@ namespace SongAcronymBot.Functions
             // megantheestallion
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/181bsRPaVXVlUKXrxwZfHK?si=7a5721d8666e4c74", "yd81r"));
 
-            // taylorswiftbookclub
-            acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "yfeq1"));
-
             // lilnasx
             acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/7jVv8c5Fj3E9VhNjxT4snq?si=3eead851e4e346a9", "zaegj"));
 
-            // phantomalarm
-            acronyms.AddRange(await AddAcronymsToDatabaseAsync("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "zgobi8"));
-
-            var newAcronyms = acronyms.Select(x => $"{x.Id}: {x.AcronymName} => {(x.TrackName == null ? x.AlbumName : x.TrackName)}").ToList();
+            var newAcronyms = acronyms.Select(x => $"{x.Id}: {x.AcronymName} => {x.TrackName ?? x.AlbumName}").ToList();
             foreach (var acronym in newAcronyms)
             {
                 log.LogInformation(acronym);
@@ -183,6 +167,35 @@ namespace SongAcronymBot.Functions
         private async Task<List<Acronym>> AddAcronymsToDatabaseAsync(string spotifyUrl, string subredditId)
         {
             var acronyms = await _spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditId));
+            await _acronymRepository.AddRangeAsync(acronyms);
+            return acronyms;
+        }
+
+        private async Task<List<Acronym>> AddAcronymsToDatabaseAsync(string spotifyUrl, List<string> subredditIds)
+        {
+            var acronyms = await _spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditIds.FirstOrDefault()));
+            foreach (var subredditId in subredditIds)
+            {
+                var subreddit = await _subredditRepository.GetByIdAsync(subredditId);
+                foreach (var acronym in acronyms)
+                {
+                    if (acronym.Subreddit.Id != subredditId)
+                    {
+                        var newAcronym = new Acronym
+                        {
+                            AcronymName = acronym.AcronymName,
+                            AcronymType = acronym.AcronymType,
+                            AlbumName = acronym.AlbumName,
+                            ArtistName = acronym.ArtistName,
+                            Enabled = acronym.Enabled,
+                            Subreddit = subreddit,
+                            TrackName = acronym.TrackName,
+                            YearReleased = acronym.YearReleased,
+                        };
+                        acronyms.Add(newAcronym);
+                    }
+                }
+            }
             await _acronymRepository.AddRangeAsync(acronyms);
             return acronyms;
         }
