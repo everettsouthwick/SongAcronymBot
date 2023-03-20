@@ -20,15 +20,17 @@ namespace SongAcronymBot.Domain.Services
 
     public class SpotifyService : ISpotifyService
     {
+        private readonly IBotConfiguration _configuration;
         private readonly IAcronymRepository _acronymRepository;
         private readonly ISubredditRepository _subredditRepository;
         private readonly IExcludedRepository _excludedRepository;
 
-        public SpotifyService(IAcronymRepository acronymRepository, ISubredditRepository subredditRepoistory, IExcludedRepository excludedRepository)
+        public SpotifyService(IAcronymRepository acronymRepository, ISubredditRepository subredditRepoistory, IExcludedRepository excludedRepository, IBotConfiguration configuration)
         {
             _acronymRepository = acronymRepository;
             _subredditRepository = subredditRepoistory;
             _excludedRepository = excludedRepository;
+            _configuration = configuration;
         }
 
         public async Task<List<Acronym>>? GetAcronymsFromSpotifyArtistAsync(SpotifyRequest request)
@@ -168,11 +170,11 @@ namespace SongAcronymBot.Domain.Services
             return null;
         }
 
-        private static async Task<SpotifyClient> BuildClientAsync()
+        private async Task<SpotifyClient> BuildClientAsync()
         {
             var config = SpotifyClientConfig.CreateDefault();
 
-            var request = new ClientCredentialsRequest("aa7dc193891148dfb4b9ae09ac0a1b36", "ca924f39653d479b9c0353eef21f11ad");
+            var request = new ClientCredentialsRequest(_configuration.SpotifyClientId, _configuration.SpotifyClientSecret);
             var response = await new OAuthClient(config).RequestToken(request);
 
             return new SpotifyClient(config.WithToken(response.AccessToken));
@@ -304,7 +306,7 @@ namespace SongAcronymBot.Domain.Services
                 // If it isn't a single and it's a title track, don't add an acronym for it
                 if (album.AlbumType != "single" && track.Name == album.Name)
                 {
-                    return null;
+                    continue;
                 }
 
                 if (subredditId == null && acronymName.Length < 5)

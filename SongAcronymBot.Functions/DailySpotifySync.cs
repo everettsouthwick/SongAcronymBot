@@ -173,27 +173,25 @@ namespace SongAcronymBot.Functions
 
         private async Task<List<Acronym>> AddAcronymsToDatabaseAsync(string spotifyUrl, List<string> subredditIds)
         {
-            var acronyms = await _spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditIds.FirstOrDefault()));
+            List<Acronym> acronyms = new List<Acronym>();
+            var initialAcronyms = await _spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditIds.FirstOrDefault()));
             foreach (var subredditId in subredditIds)
             {
                 var subreddit = await _subredditRepository.GetByIdAsync(subredditId);
-                foreach (var acronym in acronyms)
+                foreach (var acronym in initialAcronyms)
                 {
-                    if (acronym.Subreddit.Id != subredditId)
+                    var newAcronym = new Acronym
                     {
-                        var newAcronym = new Acronym
-                        {
-                            AcronymName = acronym.AcronymName,
-                            AcronymType = acronym.AcronymType,
-                            AlbumName = acronym.AlbumName,
-                            ArtistName = acronym.ArtistName,
-                            Enabled = acronym.Enabled,
-                            Subreddit = subreddit,
-                            TrackName = acronym.TrackName,
-                            YearReleased = acronym.YearReleased,
-                        };
-                        acronyms.Add(newAcronym);
-                    }
+                        AcronymName = acronym.AcronymName,
+                        AcronymType = acronym.AcronymType,
+                        AlbumName = acronym.AlbumName,
+                        ArtistName = acronym.ArtistName,
+                        Enabled = acronym.Enabled,
+                        Subreddit = subreddit,
+                        TrackName = acronym.TrackName,
+                        YearReleased = acronym.YearReleased,
+                    };
+                    acronyms.Add(newAcronym);
                 }
             }
             await _acronymRepository.AddRangeAsync(acronyms);

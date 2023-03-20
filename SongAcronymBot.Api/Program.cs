@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SongAcronymBot.Domain;
 using SongAcronymBot.Domain.Data;
 using SongAcronymBot.Domain.Repositories;
 using SongAcronymBot.Domain.Services;
@@ -18,6 +19,7 @@ builder.Services.AddTransient<IRedditorRepository, RedditorRepository>();
 builder.Services.AddTransient<ISubredditRepository, SubredditRepository>();
 builder.Services.AddTransient<IExcludedRepository, ExcludedRepository>();
 builder.Services.AddTransient<ISpotifyService, SpotifyService>();
+builder.Services.AddTransient<IBotConfiguration, BotConfiguration>();
 
 var app = builder.Build();
 
