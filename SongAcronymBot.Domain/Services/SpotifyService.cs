@@ -297,12 +297,24 @@ namespace SongAcronymBot.Domain.Services
             foreach (var acronymName in acronymNames)
             {
                 if (_excludedRepository.Contains(acronymName))
+                {
                     return null;
+                }
+
+                // If it isn't a single and it's a title track, don't add an acronym for it
+                if (album.AlbumType != "single" && track.Name == album.Name)
+                {
+                    return null;
+                }
 
                 if (subredditId == null && acronymName.Length < 5)
+                {
                     return null;
+                }
                 else if (acronymName.Length < 3)
+                {
                     return null;
+                }
 
                 var subreddit = await GetSubbreditAsync(subredditId, acronymName);
 
