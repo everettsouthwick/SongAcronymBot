@@ -1,4 +1,5 @@
-﻿using SongAcronymBot.Domain.Enum;
+﻿using Microsoft.Extensions.Options;
+using SongAcronymBot.Domain.Enum;
 using SongAcronymBot.Domain.Models;
 using SongAcronymBot.Domain.Models.Requests;
 using SongAcronymBot.Domain.Repositories;
@@ -20,17 +21,17 @@ namespace SongAcronymBot.Domain.Services
 
     public class SpotifyService : ISpotifyService
     {
-        private readonly IBotConfiguration _configuration;
+        private readonly SpotifyConfiguration _configuration;
         private readonly IAcronymRepository _acronymRepository;
         private readonly ISubredditRepository _subredditRepository;
         private readonly IExcludedRepository _excludedRepository;
 
-        public SpotifyService(IAcronymRepository acronymRepository, ISubredditRepository subredditRepoistory, IExcludedRepository excludedRepository, IBotConfiguration configuration)
+        public SpotifyService(IAcronymRepository acronymRepository, ISubredditRepository subredditRepoistory, IExcludedRepository excludedRepository, IOptions<SpotifyConfiguration> options)
         {
             _acronymRepository = acronymRepository;
             _subredditRepository = subredditRepoistory;
             _excludedRepository = excludedRepository;
-            _configuration = configuration;
+            _configuration = options.Value;
         }
 
         public async Task<List<Acronym>>? GetAcronymsFromSpotifyArtistAsync(SpotifyRequest request)
@@ -174,7 +175,7 @@ namespace SongAcronymBot.Domain.Services
         {
             var config = SpotifyClientConfig.CreateDefault();
 
-            var request = new ClientCredentialsRequest(_configuration.SpotifyClientId, _configuration.SpotifyClientSecret);
+            var request = new ClientCredentialsRequest(_configuration.ClientId, _configuration.ClientSecret);
             var response = await new OAuthClient(config).RequestToken(request);
 
             return new SpotifyClient(config.WithToken(response.AccessToken));
