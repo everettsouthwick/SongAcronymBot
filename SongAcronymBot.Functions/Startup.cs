@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SongAcronymBot.Domain;
 using SongAcronymBot.Domain.Data;
 using SongAcronymBot.Domain.Repositories;
 using SongAcronymBot.Domain.Services;
@@ -40,7 +39,7 @@ namespace SongAcronymBot.Functions
             builder.Services.AddTransient<ISubredditRepository, SubredditRepository>();
             builder.Services.AddTransient<IExcludedRepository, ExcludedRepository>();
             builder.Services.AddTransient<ISpotifyService, SpotifyService>();
-            builder.Services.AddTransient<IBotConfiguration, BotConfiguration>();
+            builder.Services.Configure<SpotifyConfiguration>(config.GetSection("Spotify"));
         }
     }
 }
