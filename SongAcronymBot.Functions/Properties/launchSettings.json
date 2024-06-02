@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "SongAcronymBot.Functions": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker",
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "DockerfileRunArguments": "--init",
+      "httpPort": 32303,
+      "useSSL": false
+    }
+  }
+}
