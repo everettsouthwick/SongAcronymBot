@@ -10,6 +10,7 @@ using SongAcronymBot.Domain.Services;
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", true, true)
+    .AddUserSecrets<Program>()
     .Build();
 
 var services = new ServiceCollection();
