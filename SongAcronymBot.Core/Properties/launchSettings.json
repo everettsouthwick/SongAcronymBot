@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "SongAcronymBot.Core": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
