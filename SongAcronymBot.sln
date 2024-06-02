@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -17,7 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SongAcronymBot.Core", "Song
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SongAcronymBot.Core.Test", "SongAcronymBot.Core.Test\SongAcronymBot.Core.Test.csproj", "{E37509FE-2F8B-4AAA-AC80-B42EEF704282}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SongAcronymBot.Functions", "SongAcronymBot.Functions\SongAcronymBot.Functions.csproj", "{A0666252-772F-4D39-AEA9-0501A5FF6C7A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SongAcronymBot.Functions", "SongAcronymBot.Functions\SongAcronymBot.Functions.csproj", "{A0666252-772F-4D39-AEA9-0501A5FF6C7A}"
 	ProjectSection(ProjectDependencies) = postProject
 		{2189096F-24EC-4B2E-8229-027D0FCDC604} = {2189096F-24EC-4B2E-8229-027D0FCDC604}
 	EndProjectSection

@@ -8,12 +8,8 @@ using System.Threading.Tasks;
 
 namespace SongAcronymBot.Domain.Data
 {
-    public class SongAcronymBotContext : DbContext
+    public class SongAcronymBotContext(DbContextOptions<SongAcronymBotContext> options) : DbContext(options)
     {
-        public SongAcronymBotContext(DbContextOptions<SongAcronymBotContext> options) : base(options)
-        {
-        }
-
         public DbSet<Acronym> Acronyms { get; set; }
         public DbSet<Redditor> Redditors { get; set; }
         public DbSet<Subreddit> Subreddits { get; set; }
