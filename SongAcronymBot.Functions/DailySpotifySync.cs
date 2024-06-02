@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SongAcronymBot.Domain.Models;
 using SongAcronymBot.Domain.Models.Requests;
@@ -13,19 +15,17 @@ namespace SongAcronymBot.Functions
     public class DailySpotifySync
     {
         private const int BatchSize = 2;
-        private readonly IAcronymRepository _acronymRepository;
-        private readonly ISubredditRepository _subredditRepository;
-        private readonly ISpotifyService _spotifyService;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<DailySpotifySync> _logger;
 
-        public DailySpotifySync(IAcronymRepository acronymRepository, ISpotifyService spotifyService, ISubredditRepository subredditRepository)
+        public DailySpotifySync(IServiceProvider serviceProvider, ILogger<DailySpotifySync> logger)
         {
-            _acronymRepository = acronymRepository;
-            _spotifyService = spotifyService;
-            _subredditRepository = subredditRepository;
+            _serviceProvider = serviceProvider;
+            _logger = logger;
         }
 
         [Function("DailySpotifySync")]
-        public async Task Run([TimerTrigger("0 */10 * * * *")] TimerInfo myTimer, ILogger log)
+        public async Task Run([TimerTrigger("0 0 1,9,17 * * *")] TimerInfo myTimer, ILogger log)
         {
             var artists = new List<(string SpotifyUrl, string SubredditIdOrIds)>
             {
@@ -74,45 +74,72 @@ namespace SongAcronymBot.Functions
                 ("https://open.spotify.com/artist/7jVv8c5Fj3E9VhNjxT4snq?si=3eead851e4e346a9", "zaegj")
             };
 
-            foreach (var batch in artists.Batch(BatchSize))
+            var tasks = artists.Batch(BatchSize).Select(async batch =>
             {
+                using var scope = _serviceProvider.CreateScope();
+                var scopedProvider = scope.ServiceProvider;
+
+                var acronymRepository = scopedProvider.GetRequiredService<IAcronymRepository>();
+                var subredditRepository = scopedProvider.GetRequiredService<ISubredditRepository>();
+                var spotifyService = scopedProvider.GetRequiredService<ISpotifyService>();
+
                 var acronyms = new List<Acronym>();
                 foreach (var (spotifyUrl, subredditIdOrIds) in batch)
                 {
                     var subredditIds = subredditIdOrIds.Split(',').ToList();
                     if (subredditIds.Count == 1)
                     {
-                        acronyms.AddRange(await AddAcronymsToDatabaseAsync(spotifyUrl, subredditIds.First()));
+                        acronyms.AddRange(await AddAcronymsToDatabaseAsync(spotifyUrl, subredditIds.First(), acronymRepository, spotifyService));
                     }
                     else
                     {
-                        acronyms.AddRange(await AddAcronymsToDatabaseAsync(spotifyUrl, subredditIds));
+                        acronyms.AddRange(await AddAcronymsToDatabaseAsync(spotifyUrl, subredditIds, acronymRepository, subredditRepository, spotifyService));
                     }
                 }
 
                 var newAcronyms = acronyms.Select(x => $"{x.Id}: {x.AcronymName} => {x.TrackName ?? x.AlbumName}").ToList();
                 foreach (var acronym in newAcronyms)
                 {
-                    log.LogInformation(acronym);
+                    _logger.LogInformation(acronym);
                 }
-            }
+            });
+
+            await Task.WhenAll(tasks);
         }
 
-        private async Task<List<Acronym>> AddAcronymsToDatabaseAsync(string spotifyUrl, string subredditId)
+        private async Task<List<Acronym>> AddAcronymsToDatabaseAsync(string spotifyUrl, string subredditId, IAcronymRepository acronymRepository, ISpotifyService spotifyService)
         {
-            var acronyms = await _spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditId));
-            await _acronymRepository.AddRangeAsync(acronyms);
+            var acronyms = await spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditId));
+            await acronymRepository.AddRangeAsync(acronyms);
             return acronyms;
         }
 
-        private async Task<List<Acronym>> AddAcronymsToDatabaseAsync(string spotifyUrl, List<string> subredditIds)
+        private async Task<List<Acronym>> AddAcronymsToDatabaseAsync(string spotifyUrl, List<string> subredditIds, IAcronymRepository acronymRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService)
         {
             var acronyms = new List<Acronym>();
+            var initialAcronyms = await spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditIds.First()));
+
             foreach (var subredditId in subredditIds)
             {
-                acronyms = await _spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditId));
-                await _acronymRepository.AddRangeAsync(acronyms);
+                var subreddit = await subredditRepository.GetByIdAsync(subredditId);
+                foreach (var acronym in initialAcronyms)
+                {
+                    var newAcronym = new Acronym
+                    {
+                        AcronymName = acronym.AcronymName,
+                        AcronymType = acronym.AcronymType,
+                        AlbumName = acronym.AlbumName,
+                        ArtistName = acronym.ArtistName,
+                        Enabled = acronym.Enabled,
+                        Subreddit = subreddit,
+                        TrackName = acronym.TrackName,
+                        YearReleased = acronym.YearReleased
+                    };
+                    acronyms.Add(newAcronym);
+                }
             }
+
+            await acronymRepository.AddRangeAsync(acronyms);
             return acronyms;
         }
 
@@ -129,7 +156,10 @@ namespace SongAcronymBot.Functions
 
             foreach (var item in source)
             {
-                bucket ??= new T[size];
+                if (bucket == null)
+                {
+                    bucket = new T[size];
+                }
 
                 bucket[count++] = item;
 
