@@ -25,7 +25,7 @@ namespace SongAcronymBot.Functions
         }
 
         [Function("DailySpotifySync")]
-        public async Task Run([TimerTrigger("0 0 1,9,17 * * *")] TimerInfo myTimer, ILogger log)
+        public async Task Run([TimerTrigger("0 1 0,8,16 * * *")] TimerInfo myTimer, ILogger log)
         {
             var artists = new List<(string SpotifyUrl, string SubredditIdOrIds)>
             {
