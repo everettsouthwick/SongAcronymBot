@@ -14,12 +14,19 @@ var config = new ConfigurationBuilder()
 
 var services = new ServiceCollection();
 
-var debug = config.GetValue<bool>("Debug");
+bool debug;
+if (bool.TryParse(config["Debug"], out bool debugValue))
+{
+    debug = debugValue;
+}
+else
+{
+    debug = false; // Default value if parsing fails
+}
 
-services.AddDbContext<SongAcronymBotContext>
-    (options =>
-        options.UseSqlServer(debug ? config.GetConnectionString("Local") : config.GetConnectionString("Production"))
-    );
+services.AddDbContext<SongAcronymBotContext>(options =>
+    options.UseSqlServer(debug ? config.GetConnectionString("Local") : config.GetConnectionString("Production"))
+);
 
 services.AddTransient<IAcronymRepository, AcronymRepository>();
 services.AddTransient<IRedditorRepository, RedditorRepository>();
@@ -36,11 +43,12 @@ var redditService = serviceProvider.GetService<IRedditService>();
 if (redditService == null)
     throw new NullReferenceException();
 
-var reddit = new RedditClient
-    (config.GetValue<string>("Reddit:AppId"),
-    config.GetValue<string>("Reddit:RefreshToken"),
-    config.GetValue<string>("Reddit:AppSecret"),
-    config.GetValue<string>("Reddit:AccessToken"),
-    config.GetValue<string>("Reddit:UserAgent"));
+var reddit = new RedditClient(
+    config["Reddit:AppId"],
+    config["Reddit:RefreshToken"],
+    config["Reddit:AppSecret"],
+    config["Reddit:AccessToken"],
+    config["Reddit:UserAgent"]
+);
 
 await redditService.StartAsync(reddit, debug);
