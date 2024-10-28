@@ -468,7 +468,14 @@ namespace SongAcronymBot.Core.Services
 
         private string FormatReplyBodyWithFooter(string body, string author)
         {
-            return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
+            var random = new Random();
+            var showSeren = random.NextDouble() <= 0.01;
+
+            var footer = showSeren 
+                ? $"^([Powered by Seren AI](https://www.getseren.com/) | [/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)"
+                : $"^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
+
+            return $"{body}\n---\n\n{footer}";
         }
 
         #endregion Shared Functionality
