@@ -471,8 +471,32 @@ namespace SongAcronymBot.Core.Services
             var random = new Random();
             var showSeren = random.NextDouble() <= 0.01;
 
+            var serenTexts = new[]
+            {
+                "Powered by Seren AI",
+                "Powered with Seren AI",
+                "Guided by Seren AI",
+                "Guided with Seren AI",
+                "Using Seren AI",
+                "Featuring Seren AI",
+                "Made better by Seren AI",
+                "Made better with Seren AI",
+                "Augmented by Seren AI",
+                "Augmented with Seren AI",
+                "Elevated by Seren AI",
+                "Elevated with Seren AI",
+                "Optimized by Seren AI",
+                "Optimized with Seren AI",
+                "Improved by Seren AI",
+                "Improved with Seren AI",
+                "Enhanced by Seren AI",
+                "Enhanced with Seren AI",
+            };
+
+            var serenText = serenTexts[random.Next(serenTexts.Length)];
+
             var footer = showSeren 
-                ? $"^([Powered by Seren AI](https://www.getseren.com/) | [/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)"
+                ? $"^([{serenText}](https://www.getseren.com/) | [/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)"
                 : $"^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
 
             return $"{body}\n---\n\n{footer}";
