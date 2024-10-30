@@ -44,19 +44,30 @@ namespace SongAcronymBot.Core.Services
             DisabledRedditors = await _redditorRepository.GetAllDisabled();
             Debug = debug;
 
-            // Monitor our new unread messages for mentions
-            reddit.Account.Messages.GetMessagesUnread();
-            reddit.Account.Messages.MonitorUnread();
-            reddit.Account.Messages.UnreadUpdated += Messages_UnreadUpdated;
-            reddit.Account.Me.GetCommentHistory();
-            reddit.Account.Me.MonitorCommentHistory();
-            reddit.Account.Me.CommentHistoryUpdated += Me_CommentHistoryUpdated;
+            try
+            {
+                // Monitor our new unread messages for mentions
+                reddit.Account.Messages.GetMessagesUnread();
+                reddit.Account.Messages.MonitorUnread();
+                reddit.Account.Messages.UnreadUpdated += Messages_UnreadUpdated;
+                reddit.Account.Me.GetCommentHistory();
+                reddit.Account.Me.MonitorCommentHistory();
+                reddit.Account.Me.CommentHistoryUpdated += Me_CommentHistoryUpdated;
 
-            // Monitor all tracked subreddits for potential matches
-            var subreddits = reddit.Subreddit(await GetMultiredditStringAsync());
-            subreddits.Comments.GetNew();
-            subreddits.Comments.MonitorNew();
-            subreddits.Comments.NewUpdated += Comments_NewUpdated;
+                // Monitor all tracked subreddits for potential matches
+                var subreddits = reddit.Subreddit(await GetMultiredditStringAsync());
+                subreddits.Comments.GetNew();
+                subreddits.Comments.MonitorNew();
+                subreddits.Comments.NewUpdated += Comments_NewUpdated;
+            }
+            catch (RedditForbiddenException ex)
+            {
+                if (Debug)
+                {
+                    Console.WriteLine($"DEBUG :: Failed to start Reddit service - {ex.Message}");
+                }
+                throw;
+            }
         }
 
         #region Process Message
@@ -69,7 +80,17 @@ namespace SongAcronymBot.Core.Services
                 {
                     Console.WriteLine($"DEBUG :: New unread message {message.Author} - {message.Body}");
                 }
-                await ProcessMessageAsync(message);
+                try
+                {
+                    await ProcessMessageAsync(message);
+                }
+                catch (RedditForbiddenException ex)
+                {
+                    if (Debug)
+                    {
+                        Console.WriteLine($"DEBUG :: Failed to process message - {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -252,7 +273,17 @@ namespace SongAcronymBot.Core.Services
                 {
                     Console.WriteLine($"DEBUG :: New comment {comment.Subreddit} - {comment.Root.Title}");
                 }
-                await ProcessCommentAsync(comment);
+                try
+                {
+                    await ProcessCommentAsync(comment);
+                }
+                catch (RedditForbiddenException ex)
+                {
+                    if (Debug)
+                    {
+                        Console.WriteLine($"DEBUG :: Failed to process comment - {ex.Message}");
+                    }
+                }
             }
         }
 
@@ -297,6 +328,7 @@ namespace SongAcronymBot.Core.Services
                 {
                     Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
                 }
+                throw;
             }
         }
 
