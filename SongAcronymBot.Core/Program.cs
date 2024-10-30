@@ -26,34 +26,23 @@ else
 }
 
 services.AddDbContext<SongAcronymBotContext>(options =>
-{
-    options.UseSqlServer(
-        debug ? config.GetConnectionString("Local") : config.GetConnectionString("Production"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null)
-    );
-}, ServiceLifetime.Scoped); // Changed to Scoped for better concurrency management
+    options.UseSqlServer(debug ? config.GetConnectionString("Local") : config.GetConnectionString("Production"))
+);
 
-// Register repositories as scoped for consistent unit of work pattern
-services.AddScoped<IAcronymRepository, AcronymRepository>();
-services.AddScoped<IRedditorRepository, RedditorRepository>();
-services.AddScoped<ISubredditRepository, SubredditRepository>();
-services.AddScoped<IExcludedRepository, ExcludedRepository>();
-
-// Services can remain transient as they don't hold state
+services.AddTransient<IAcronymRepository, AcronymRepository>();
+services.AddTransient<IRedditorRepository, RedditorRepository>();
+services.AddTransient<ISubredditRepository, SubredditRepository>();
 services.AddTransient<IRedditService, RedditService>();
 services.AddTransient<ISpotifyService, SpotifyService>();
+services.AddTransient<IExcludedRepository, ExcludedRepository>();
 services.Configure<SpotifyConfiguration>(config.GetSection("Spotify"));
 
-var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
-{
-    ValidateScopes = true,
-    ValidateOnBuild = true
-});
+var serviceProvider = services.BuildServiceProvider();
 
-var redditService = serviceProvider.GetRequiredService<IRedditService>(); // Using GetRequiredService instead of GetService
+var redditService = serviceProvider.GetService<IRedditService>();
+
+if (redditService == null)
+    throw new NullReferenceException();
 
 var reddit = new RedditClient(
     config["Reddit:AppId"],
