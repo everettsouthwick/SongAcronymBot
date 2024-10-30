@@ -6,90 +6,126 @@ namespace SongAcronymBot.Domain.Repositories
 {
     public interface IAcronymRepository : IRepository<Acronym>
     {
-        Task<Acronym> GetByIdAsync(int id);
-        Task<Acronym> GetByNameAsync(string name, string subredditId);
-        Task<List<Acronym>> GetAllByNameAsync(string name);
-        Task<List<Acronym>> GetAllBySubredditIdAsync(string id);
-        Task<List<Acronym>> GetAllBySubredditNameAsync(string name);
-        Task<List<Acronym>> GetAllGlobalAcronyms();
+        Task<Acronym> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+        Task<Acronym> GetByNameAsync(string name, string subredditId, CancellationToken cancellationToken = default);
+        Task<List<Acronym>> GetAllByNameAsync(string name, CancellationToken cancellationToken = default);
+        Task<List<Acronym>> GetAllBySubredditIdAsync(string id, CancellationToken cancellationToken = default);
+        Task<List<Acronym>> GetAllBySubredditNameAsync(string name, CancellationToken cancellationToken = default);
+        Task<List<Acronym>> GetAllGlobalAcronyms(CancellationToken cancellationToken = default);
     }
 
     public class AcronymRepository : Repository<Acronym>, IAcronymRepository
     {
         private new readonly SongAcronymBotContext _context;
+        private readonly AsyncLock _asyncLock;
 
         public AcronymRepository(SongAcronymBotContext context) : base(context)
         {
             _context = context;
+            _asyncLock = new AsyncLock();
         }
 
-        public async Task<Acronym> GetByIdAsync(int id)
+        public async Task<Acronym> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _context.Set<Acronym>().AsNoTracking().SingleAsync(x => x.Id == id && x.Enabled);
+                using (await _asyncLock.LockAsync(cancellationToken))
+                {
+                    return await _context.Set<Acronym>()
+                        .AsNoTracking()
+                        .SingleAsync(x => x.Id == id && x.Enabled, cancellationToken);
+                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<Acronym> GetByNameAsync(string name, string subredditId)
+        public async Task<Acronym> GetByNameAsync(string name, string subredditId, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _context.Set<Acronym>().AsNoTracking().SingleAsync(x => x.AcronymName == name && x.Subreddit != null && x.Subreddit.Id == subredditId);
+                using (await _asyncLock.LockAsync(cancellationToken))
+                {
+                    return await _context.Set<Acronym>()
+                        .AsNoTracking()
+                        .SingleAsync(x => x.AcronymName == name && x.Subreddit != null && x.Subreddit.Id == subredditId, cancellationToken);
+                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Acronym>> GetAllByNameAsync(string name)
+        public async Task<List<Acronym>> GetAllByNameAsync(string name, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _context.Set<Acronym>().AsNoTracking().Where(x => x.AcronymName == name).ToListAsync();
+                using (await _asyncLock.LockAsync(cancellationToken))
+                {
+                    return await _context.Set<Acronym>()
+                        .AsNoTracking()
+                        .Where(x => x.AcronymName == name)
+                        .ToListAsync(cancellationToken);
+                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Acronym>> GetAllBySubredditIdAsync(string id)
+        public async Task<List<Acronym>> GetAllBySubredditIdAsync(string id, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _context.Set<Acronym>().AsNoTracking().Where(x => x.Subreddit != null && x.Subreddit.Id == id).ToListAsync();
+                using (await _asyncLock.LockAsync(cancellationToken))
+                {
+                    return await _context.Set<Acronym>()
+                        .AsNoTracking()
+                        .Where(x => x.Subreddit != null && x.Subreddit.Id == id)
+                        .ToListAsync(cancellationToken);
+                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Acronym>> GetAllBySubredditNameAsync(string name)
+        public async Task<List<Acronym>> GetAllBySubredditNameAsync(string name, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _context.Set<Acronym>().AsNoTracking().Where(x => x.Subreddit != null && x.Subreddit.Name == name).ToListAsync();
+                using (await _asyncLock.LockAsync(cancellationToken))
+                {
+                    return await _context.Set<Acronym>()
+                        .AsNoTracking()
+                        .Where(x => x.Subreddit != null && x.Subreddit.Name == name)
+                        .ToListAsync(cancellationToken);
+                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Acronym>> GetAllGlobalAcronyms()
+        public async Task<List<Acronym>> GetAllGlobalAcronyms(CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _context.Set<Acronym>().AsNoTracking().Where(x => x.Subreddit != null && x.Subreddit.Id == "global").ToListAsync();
+                using (await _asyncLock.LockAsync(cancellationToken))
+                {
+                    return await _context.Set<Acronym>()
+                        .AsNoTracking()
+                        .Where(x => x.Subreddit != null && x.Subreddit.Id == "global")
+                        .ToListAsync(cancellationToken);
+                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
