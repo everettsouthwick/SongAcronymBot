@@ -22,7 +22,7 @@ namespace SongAcronymBot.Core.Services
         private readonly IRedditorRepository _redditorRepository;
         private readonly ISubredditRepository _subredditRepository;
         private readonly ISpotifyService _spotifyService;
-        private readonly SemaphoreSlim _semaphore = new(1, 1);
+        private readonly SemaphoreSlim _dbSemaphore = new(1, 1);
 
         private RedditClient Reddit = null!;
         private List<Redditor> DisabledRedditors = null!;
@@ -41,7 +41,15 @@ namespace SongAcronymBot.Core.Services
             ArgumentNullException.ThrowIfNull(reddit);
 
             Reddit = reddit;
-            DisabledRedditors = await _redditorRepository.GetAllDisabled();
+            await _dbSemaphore.WaitAsync();
+            try
+            {
+                DisabledRedditors = await _redditorRepository.GetAllDisabled();
+            }
+            finally
+            {
+                _dbSemaphore.Release();
+            }
             Debug = debug;
 
             try
@@ -60,7 +68,7 @@ namespace SongAcronymBot.Core.Services
                 subreddits.Comments.MonitorNew();
                 subreddits.Comments.NewUpdated += Comments_NewUpdated;
             }
-            catch (RedditForbiddenException ex)
+            catch (Exception ex) when (ex is RedditForbiddenException or RedditBadGatewayException)
             {
                 if (Debug)
                 {
@@ -161,7 +169,15 @@ namespace SongAcronymBot.Core.Services
                 }
 
                 await AddOrUpdateRedditor(message.Id, message.Author, false);
-                DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                await _dbSemaphore.WaitAsync();
+                try
+                {
+                    DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                }
+                finally
+                {
+                    _dbSemaphore.Release();
+                }
 
                 return true;
             }
@@ -187,7 +203,15 @@ namespace SongAcronymBot.Core.Services
             {
                 await parent.DeleteAsync();
                 await AddOrUpdateRedditor(message.Id, message.Author, false);
-                DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                await _dbSemaphore.WaitAsync();
+                try
+                {
+                    DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                }
+                finally
+                {
+                    _dbSemaphore.Release();
+                }
                 return true;
             }
 
@@ -212,23 +236,31 @@ namespace SongAcronymBot.Core.Services
             var index = 1;
             foreach (var query in acronymsToQuery)
             {
-                var acronyms = (await _acronymRepository.GetAllByNameAsync(query)).GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
-                foreach (var acronym in acronyms)
+                await _dbSemaphore.WaitAsync();
+                try
                 {
-                    matches.Add(new AcronymMatch(acronym, index));
-                }
-
-                if (acronyms.Count == 0)
-                {
-                    var acronym = await _spotifyService.SearchAcronymAsync(query);
-                    if (acronym != null)
+                    var acronyms = (await _acronymRepository.GetAllByNameAsync(query)).GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
+                    foreach (var acronym in acronyms)
                     {
                         matches.Add(new AcronymMatch(acronym, index));
                     }
-                    else
+
+                    if (acronyms.Count == 0)
                     {
-                        matches.Add(new AcronymMatch(query, index));
+                        var acronym = await _spotifyService.SearchAcronymAsync(query);
+                        if (acronym != null)
+                        {
+                            matches.Add(new AcronymMatch(acronym, index));
+                        }
+                        else
+                        {
+                            matches.Add(new AcronymMatch(query, index));
+                        }
                     }
+                }
+                finally
+                {
+                    _dbSemaphore.Release();
                 }
 
                 index++;
@@ -379,7 +411,15 @@ namespace SongAcronymBot.Core.Services
                             Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
                         }
                     }
-                    DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                    await _dbSemaphore.WaitAsync();
+                    try
+                    {
+                        DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                    }
+                    finally
+                    {
+                        _dbSemaphore.Release();
+                    }
                     return true;
                 }
                 else if (comment.Body.Equals("optin", StringComparison.CurrentCultureIgnoreCase))
@@ -400,7 +440,15 @@ namespace SongAcronymBot.Core.Services
                             Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
                         }
                     }
-                    DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                    await _dbSemaphore.WaitAsync();
+                    try
+                    {
+                        DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                    }
+                    finally
+                    {
+                        _dbSemaphore.Release();
+                    }
                     return true;
                 }
             }
@@ -412,7 +460,7 @@ namespace SongAcronymBot.Core.Services
         {
             var matches = new List<AcronymMatch>();
 
-            await _semaphore.WaitAsync();
+            await _dbSemaphore.WaitAsync();
             try
             {
                 var acronyms = await _acronymRepository.GetAllGlobalAcronyms();
@@ -428,7 +476,7 @@ namespace SongAcronymBot.Core.Services
             }
             finally
             {
-                _semaphore.Release();
+                _dbSemaphore.Release();
             }
 
             return matches.OrderBy(x => x.Position).ToList();
@@ -597,10 +645,18 @@ namespace SongAcronymBot.Core.Services
         {
             var multireddit = string.Empty;
 
-            var subreddits = await GetEnabledSubredditsAsync();
-            foreach (var subreddit in subreddits)
+            await _dbSemaphore.WaitAsync();
+            try
             {
-                multireddit += $"{subreddit.Name}+";
+                var subreddits = await GetEnabledSubredditsAsync();
+                foreach (var subreddit in subreddits)
+                {
+                    multireddit += $"{subreddit.Name}+";
+                }
+            }
+            finally
+            {
+                _dbSemaphore.Release();
             }
 
             return multireddit.TrimEnd('+');
@@ -613,25 +669,33 @@ namespace SongAcronymBot.Core.Services
 
         private async Task<Redditor> AddOrUpdateRedditor(string id, string username, bool enabled)
         {
-            var redditor = await _redditorRepository.GetByNameAsync(username);
-
-            if (redditor == null)
+            await _dbSemaphore.WaitAsync();
+            try
             {
-                redditor = new Redditor
+                var redditor = await _redditorRepository.GetByNameAsync(username);
+
+                if (redditor == null)
                 {
-                    Id = id,
-                    Username = username,
-                    Enabled = enabled
-                };
-                await _redditorRepository.AddAsync(redditor);
-            }
-            else
-            {
-                redditor.Enabled = enabled;
-                await _redditorRepository.UpdateAsync(redditor);
-            }
+                    redditor = new Redditor
+                    {
+                        Id = id,
+                        Username = username,
+                        Enabled = enabled
+                    };
+                    await _redditorRepository.AddAsync(redditor);
+                }
+                else
+                {
+                    redditor.Enabled = enabled;
+                    await _redditorRepository.UpdateAsync(redditor);
+                }
 
-            return redditor;
+                return redditor;
+            }
+            finally
+            {
+                _dbSemaphore.Release();
+            }
         }
 
         private static string FormatReplyBodyWithFooter(string body, string author)
