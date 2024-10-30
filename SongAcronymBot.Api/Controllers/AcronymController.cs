@@ -8,14 +8,9 @@ namespace SongAcronymBot.Api.Controllers
 {
     [Route("api/acronyms")]
     [ApiController]
-    public class AcronymController : ControllerBase
+    public class AcronymController(IAcronymRepository acronymRepoistory) : ControllerBase
     {
-        private readonly IAcronymRepository _acronymRepository;
-
-        public AcronymController(IAcronymRepository acronymRepoistory)
-        {
-            _acronymRepository = acronymRepoistory;
-        }
+        private readonly IAcronymRepository _acronymRepository = acronymRepoistory;
 
         [HttpGet]
         public IQueryable<Acronym> GetAll()

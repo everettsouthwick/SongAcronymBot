@@ -16,12 +16,12 @@ namespace SongAcronymBot.Core.Services
         Task StartAsync(RedditClient reddit, bool debug = false);
     }
 
-    public class RedditService : IRedditService
+    public class RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService) : IRedditService
     {
-        private readonly IAcronymRepository _acronymRepository;
-        private readonly IRedditorRepository _redditorRepository;
-        private readonly ISubredditRepository _subredditRepository;
-        private readonly ISpotifyService _spotifyService;
+        private readonly IAcronymRepository _acronymRepository = acronymRepository ?? throw new ArgumentNullException(nameof(acronymRepository));
+        private readonly IRedditorRepository _redditorRepository = redditorRepository ?? throw new ArgumentNullException(nameof(redditorRepository));
+        private readonly ISubredditRepository _subredditRepository = subredditRepository ?? throw new ArgumentNullException(nameof(subredditRepository));
+        private readonly ISpotifyService _spotifyService = spotifyService ?? throw new ArgumentNullException(nameof(spotifyService));
         private readonly SemaphoreSlim _dbSemaphore = new(3, 3); // Increased concurrency
         private readonly SemaphoreSlim _commentSemaphore = new(5, 5); // Increased concurrency
         private readonly SemaphoreSlim _acronymSemaphore = new(3, 3); // Increased concurrency
@@ -29,14 +29,6 @@ namespace SongAcronymBot.Core.Services
         private RedditClient Reddit = null!;
         private volatile List<Redditor> DisabledRedditors = null!; // Made volatile for thread safety
         private volatile bool Debug;
-
-        public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService)
-        {
-            _acronymRepository = acronymRepository ?? throw new ArgumentNullException(nameof(acronymRepository));
-            _redditorRepository = redditorRepository ?? throw new ArgumentNullException(nameof(redditorRepository));
-            _subredditRepository = subredditRepository ?? throw new ArgumentNullException(nameof(subredditRepository));
-            _spotifyService = spotifyService ?? throw new ArgumentNullException(nameof(spotifyService));
-        }
 
         public async Task StartAsync(RedditClient reddit, bool debug = false)
         {

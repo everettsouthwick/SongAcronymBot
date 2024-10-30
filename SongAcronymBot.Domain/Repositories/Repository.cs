@@ -11,16 +11,10 @@ namespace SongAcronymBot.Domain.Repositories
         Task<TEntity> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
     }
 
-    public class Repository<TEntity> : IRepository<TEntity> where TEntity : class, new()
+    public class Repository<TEntity>(SongAcronymBotContext context) : IRepository<TEntity> where TEntity : class, new()
     {
-        protected readonly SongAcronymBotContext _context;
-        private readonly AsyncLock _asyncLock;
-
-        public Repository(SongAcronymBotContext context)
-        {
-            _context = context;
-            _asyncLock = new AsyncLock();
-        }
+        protected readonly SongAcronymBotContext _context = context;
+        private readonly AsyncLock _asyncLock = new();
 
         public IQueryable<TEntity> GetAll()
         {
@@ -94,7 +88,7 @@ namespace SongAcronymBot.Domain.Repositories
 
     public sealed class AsyncLock
     {
-        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _semaphore = new(1, 1);
         private readonly Task<IDisposable> _releaser;
 
         public AsyncLock()

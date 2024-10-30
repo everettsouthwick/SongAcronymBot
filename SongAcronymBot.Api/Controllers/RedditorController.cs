@@ -7,14 +7,9 @@ namespace SongAcronymBot.Api.Controllers
 {
     [Route("api/redditor")]
     [ApiController]
-    public class RedditorController : ControllerBase
+    public class RedditorController(IRedditorRepository redditorRepoistory) : ControllerBase
     {
-        private readonly IRedditorRepository _redditorRepository;
-
-        public RedditorController(IRedditorRepository redditorRepoistory)
-        {
-            _redditorRepository = redditorRepoistory;
-        }
+        private readonly IRedditorRepository _redditorRepository = redditorRepoistory;
 
         [HttpGet]
         public IQueryable<Redditor> GetAll()

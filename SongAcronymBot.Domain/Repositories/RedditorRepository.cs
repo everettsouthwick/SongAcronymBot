@@ -11,16 +11,9 @@ namespace SongAcronymBot.Domain.Repositories
         Task<List<Redditor>> GetAllDisabled(CancellationToken cancellationToken = default);
     }
 
-    public class RedditorRepository : Repository<Redditor>, IRedditorRepository
+    public class RedditorRepository(SongAcronymBotContext context) : Repository<Redditor>(context), IRedditorRepository
     {
-        private new readonly SongAcronymBotContext _context;
-        private readonly AsyncLock _asyncLock;
-
-        public RedditorRepository(SongAcronymBotContext context) : base(context)
-        {
-            _context = context;
-            _asyncLock = new AsyncLock();
-        }
+        private readonly AsyncLock _asyncLock = new();
 
         public async Task<Redditor?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
         {
@@ -28,8 +21,7 @@ namespace SongAcronymBot.Domain.Repositories
             {
                 using (await _asyncLock.LockAsync(cancellationToken))
                 {
-                    return await _context.Set<Redditor>()
-                        .AsNoTracking()
+                    return await GetAll()
                         .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
                 }
             }
@@ -45,8 +37,7 @@ namespace SongAcronymBot.Domain.Repositories
             {
                 using (await _asyncLock.LockAsync(cancellationToken))
                 {
-                    return await _context.Set<Redditor>()
-                        .AsNoTracking()
+                    return await GetAll()
                         .SingleOrDefaultAsync(x => x.Username == username, cancellationToken);
                 }
             }
@@ -62,8 +53,7 @@ namespace SongAcronymBot.Domain.Repositories
             {
                 using (await _asyncLock.LockAsync(cancellationToken))
                 {
-                    return await _context.Set<Redditor>()
-                        .AsNoTracking()
+                    return await GetAll()
                         .Where(x => !x.Enabled)
                         .ToListAsync(cancellationToken);
                 }

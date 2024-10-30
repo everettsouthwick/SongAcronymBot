@@ -7,14 +7,9 @@ namespace SongAcronymBot.Api.Controllers
 {
     [Route("api/subreddit")]
     [ApiController]
-    public class SubredditController : ControllerBase
+    public class SubredditController(ISubredditRepository subredditRepoistory) : ControllerBase
     {
-        private readonly ISubredditRepository _subredditRepository;
-
-        public SubredditController(ISubredditRepository subredditRepoistory)
-        {
-            _subredditRepository = subredditRepoistory;
-        }
+        private readonly ISubredditRepository _subredditRepository = subredditRepoistory;
 
         [HttpGet]
         public IQueryable<Subreddit> GetAll()
