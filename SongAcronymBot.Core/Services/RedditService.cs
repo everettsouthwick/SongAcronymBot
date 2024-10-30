@@ -24,6 +24,7 @@ namespace SongAcronymBot.Core.Services
         private readonly ISpotifyService _spotifyService;
         private readonly SemaphoreSlim _dbSemaphore = new(1, 1);
         private readonly SemaphoreSlim _commentSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _acronymSemaphore = new(1, 1);
 
         private RedditClient Reddit = null!;
         private List<Redditor> DisabledRedditors = null!;
@@ -469,7 +470,7 @@ namespace SongAcronymBot.Core.Services
         {
             var matches = new List<AcronymMatch>();
 
-            await _dbSemaphore.WaitAsync();
+            await _acronymSemaphore.WaitAsync();
             try
             {
                 var acronyms = await _acronymRepository.GetAllGlobalAcronyms();
@@ -485,7 +486,7 @@ namespace SongAcronymBot.Core.Services
             }
             finally
             {
-                _dbSemaphore.Release();
+                _acronymSemaphore.Release();
             }
 
             return matches.OrderBy(x => x.Position).ToList();
