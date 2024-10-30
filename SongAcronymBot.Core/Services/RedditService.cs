@@ -22,6 +22,7 @@ namespace SongAcronymBot.Core.Services
         private readonly IRedditorRepository _redditorRepository;
         private readonly ISubredditRepository _subredditRepository;
         private readonly ISpotifyService _spotifyService;
+        private readonly SemaphoreSlim _semaphore = new(1, 1);
 
         private RedditClient Reddit = null!;
         private List<Redditor> DisabledRedditors = null!;
@@ -312,7 +313,7 @@ namespace SongAcronymBot.Core.Services
             }
 
             // Do not reply to submissions by someone who has disabled us
-            if (DisabledRedditors.Any(x => x.Username.Equals(comment.Author, StringComparison.CurrentCultureIgnoreCase)))
+            if (DisabledRedditors.Any(x => (x.Username ?? string.Empty).Equals(comment.Author, StringComparison.CurrentCultureIgnoreCase)))
             {
                 if (Debug)
                 {
@@ -379,15 +380,23 @@ namespace SongAcronymBot.Core.Services
         {
             var matches = new List<AcronymMatch>();
 
-            var acronyms = await _acronymRepository.GetAllGlobalAcronyms();
-            acronyms.AddRange(await _acronymRepository.GetAllBySubredditNameAsync(comment.Subreddit.ToLower()));
-
-            foreach (var acronym in acronyms)
+            await _semaphore.WaitAsync();
+            try
             {
-                if (IsMatch(comment, acronym, out int index))
+                var acronyms = await _acronymRepository.GetAllGlobalAcronyms();
+                acronyms.AddRange(await _acronymRepository.GetAllBySubredditNameAsync(comment.Subreddit.ToLower()));
+
+                foreach (var acronym in acronyms)
                 {
-                    matches.Add(new AcronymMatch(acronym, index));
+                    if (IsMatch(comment, acronym, out int index))
+                    {
+                        matches.Add(new AcronymMatch(acronym, index));
+                    }
                 }
+            }
+            finally
+            {
+                _semaphore.Release();
             }
 
             return matches.OrderBy(x => x.Position).ToList();
@@ -413,8 +422,8 @@ namespace SongAcronymBot.Core.Services
                     var matchStart = index == 0 ? 0 : index - 1;
                     var matchLength = acronymName.Length + 2 > body.Length ? acronymName.Length : acronymName.Length + 2;
                     var match = body.Substring(matchStart, matchLength);
-                    match = String.Concat(Array.FindAll(match.ToCharArray(), Char.IsLetterOrDigit));
-                    acronymName = String.Concat(Array.FindAll(acronymName.ToCharArray(), Char.IsLetterOrDigit));
+                    match = string.Concat(Array.FindAll(match.ToCharArray(), char.IsLetterOrDigit));
+                    acronymName = string.Concat(Array.FindAll(acronymName.ToCharArray(), char.IsLetterOrDigit));
 
                     if (match == acronymName)
                     {
@@ -437,7 +446,7 @@ namespace SongAcronymBot.Core.Services
             return false;
         }
 
-        private bool IsUnrepliedAndUndefined(Comment comment, Acronym acronym)
+        private static bool IsUnrepliedAndUndefined(Comment comment, Acronym acronym)
         {
             if (acronym?.AcronymName == null)
             {
