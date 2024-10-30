@@ -27,7 +27,7 @@ namespace SongAcronymBot.Domain.Repositories
         {
             try
             {
-                return await _context.Set<Acronym>().SingleAsync(x => x.Id == id && x.Enabled);
+                return await _context.Set<Acronym>().AsNoTracking().SingleAsync(x => x.Id == id && x.Enabled);
             }
             catch (Exception ex)
             {
@@ -39,7 +39,7 @@ namespace SongAcronymBot.Domain.Repositories
         {
             try
             {
-                return await _context.Set<Acronym>().SingleAsync(x => x.AcronymName == name && x.Subreddit != null && x.Subreddit.Id == subredditId);
+                return await _context.Set<Acronym>().AsNoTracking().SingleAsync(x => x.AcronymName == name && x.Subreddit != null && x.Subreddit.Id == subredditId);
             }
             catch (Exception ex)
             {
@@ -51,7 +51,7 @@ namespace SongAcronymBot.Domain.Repositories
         {
             try
             {
-                return await _context.Set<Acronym>().Where(x => x.AcronymName == name).ToListAsync();
+                return await _context.Set<Acronym>().AsNoTracking().Where(x => x.AcronymName == name).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -63,7 +63,7 @@ namespace SongAcronymBot.Domain.Repositories
         {
             try
             {
-                return await _context.Set<Acronym>().Where(x => x.Subreddit != null && x.Subreddit.Id == id).ToListAsync();
+                return await _context.Set<Acronym>().AsNoTracking().Where(x => x.Subreddit != null && x.Subreddit.Id == id).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -75,7 +75,7 @@ namespace SongAcronymBot.Domain.Repositories
         {
             try
             {
-                return await _context.Set<Acronym>().Where(x => x.Subreddit != null && x.Subreddit.Name == name).ToListAsync();
+                return await _context.Set<Acronym>().AsNoTracking().Where(x => x.Subreddit != null && x.Subreddit.Name == name).ToListAsync();
             }
             catch (Exception ex)
             {
@@ -87,7 +87,7 @@ namespace SongAcronymBot.Domain.Repositories
         {
             try
             {
-                return await _context.Set<Acronym>().Where(x => x.Subreddit != null && x.Subreddit.Id == "global").ToListAsync();
+                return await _context.Set<Acronym>().AsNoTracking().Where(x => x.Subreddit != null && x.Subreddit.Id == "global").ToListAsync();
             }
             catch (Exception ex)
             {
