@@ -12,16 +12,10 @@ using SongAcronymBot.Domain.Services;
 
 namespace SongAcronymBot.Functions
 {
-    public class DailySpotifySync
+    public class DailySpotifySync(IServiceProvider serviceProvider, ILogger<DailySpotifySync> logger)
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly ILogger<DailySpotifySync> _logger;
-
-        public DailySpotifySync(IServiceProvider serviceProvider, ILogger<DailySpotifySync> logger)
-        {
-            _serviceProvider = serviceProvider;
-            _logger = logger;
-        }
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
+        private readonly ILogger<DailySpotifySync> _logger = logger;
 
         [Function("DailySpotifySync")]
         public async Task Run([TimerTrigger("*/30 * * * * *")] TimerInfo myTimer, ILogger log)

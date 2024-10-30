@@ -19,14 +19,9 @@ namespace SongAcronymBot.Domain.Repositories
         Task<List<Acronym>> GetAllGlobalAcronyms(CancellationToken cancellationToken = default);
     }
 
-    public class AcronymRepository : Repository<Acronym>, IAcronymRepository
+    public class AcronymRepository(SongAcronymBotContext context) : Repository<Acronym>(context), IAcronymRepository
     {
-        private readonly AsyncLock _asyncLock;
-
-        public AcronymRepository(SongAcronymBotContext context) : base(context)
-        {
-            _asyncLock = new AsyncLock();
-        }
+        private readonly AsyncLock _asyncLock = new();
 
         public async Task<Acronym> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
@@ -34,7 +29,6 @@ namespace SongAcronymBot.Domain.Repositories
             {
                 using var lockToken = await _asyncLock.LockAsync(cancellationToken);
                 return await GetAll()
-                    .AsNoTracking()
                     .SingleAsync(x => x.Id == id && x.Enabled, cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -49,7 +43,6 @@ namespace SongAcronymBot.Domain.Repositories
             {
                 using var lockToken = await _asyncLock.LockAsync(cancellationToken);
                 return await GetAll()
-                    .AsNoTracking()
                     .SingleAsync(x => x.AcronymName == name && x.Subreddit != null && x.Subreddit.Id == subredditId, cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

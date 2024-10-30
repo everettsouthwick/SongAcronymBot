@@ -8,16 +8,10 @@ namespace SongAcronymBot.Api.Controllers
 {
     [Route("api/spotify")]
     [ApiController]
-    public class SpotifyController : ControllerBase
+    public class SpotifyController(IAcronymRepository acronymRepository, ISpotifyService spotifyService) : ControllerBase
     {
-        private readonly IAcronymRepository _acronymRepository;
-        private readonly ISpotifyService _spotifyService;
-
-        public SpotifyController(IAcronymRepository acronymRepository, ISpotifyService spotifyService)
-        {
-            _acronymRepository = acronymRepository;
-            _spotifyService = spotifyService;
-        }
+        private readonly IAcronymRepository _acronymRepository = acronymRepository;
+        private readonly ISpotifyService _spotifyService = spotifyService;
 
         [Route("artist")]
         [HttpPost]

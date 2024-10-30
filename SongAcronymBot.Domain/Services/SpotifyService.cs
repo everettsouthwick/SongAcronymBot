@@ -19,24 +19,16 @@ namespace SongAcronymBot.Domain.Services
         Task<Acronym> SearchAcronymAsync(string acronym);
     }
 
-    public class SpotifyService : ISpotifyService
+    public class SpotifyService(
+        IAcronymRepository acronymRepository,
+        ISubredditRepository subredditRepository,
+        IExcludedRepository excludedRepository,
+        IOptions<SpotifyConfiguration> options) : ISpotifyService
     {
-        private readonly SpotifyConfiguration _configuration;
-        private readonly IAcronymRepository _acronymRepository;
-        private readonly ISubredditRepository _subredditRepository;
-        private readonly IExcludedRepository _excludedRepository;
-
-        public SpotifyService(
-            IAcronymRepository acronymRepository,
-            ISubredditRepository subredditRepository,
-            IExcludedRepository excludedRepository,
-            IOptions<SpotifyConfiguration> options)
-        {
-            _acronymRepository = acronymRepository;
-            _subredditRepository = subredditRepository;
-            _excludedRepository = excludedRepository;
-            _configuration = options.Value;
-        }
+        private readonly SpotifyConfiguration _configuration = options.Value;
+        private readonly IAcronymRepository _acronymRepository = acronymRepository;
+        private readonly ISubredditRepository _subredditRepository = subredditRepository;
+        private readonly IExcludedRepository _excludedRepository = excludedRepository;
 
         public async Task<List<Acronym>> GetAcronymsFromSpotifyArtistAsync(SpotifyRequest request)
         {

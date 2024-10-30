@@ -9,16 +9,9 @@ namespace SongAcronymBot.Domain.Repositories
         Task<Subreddit> GetByIdAsync(string id, CancellationToken cancellationToken = default);
     }
 
-    public class SubredditRepository : Repository<Subreddit>, ISubredditRepository
+    public class SubredditRepository(SongAcronymBotContext context) : Repository<Subreddit>(context), ISubredditRepository
     {
-        private new readonly SongAcronymBotContext _context;
-        private readonly AsyncLock _asyncLock;
-
-        public SubredditRepository(SongAcronymBotContext context) : base(context)
-        {
-            _context = context;
-            _asyncLock = new AsyncLock();
-        }
+        private readonly AsyncLock _asyncLock = new();
 
         public async Task<Subreddit> GetByIdAsync(string id, CancellationToken cancellationToken = default)
         {
@@ -26,8 +19,7 @@ namespace SongAcronymBot.Domain.Repositories
             {
                 using (await _asyncLock.LockAsync(cancellationToken))
                 {
-                    var subreddit = await _context.Set<Subreddit>()
-                        .AsNoTracking()
+                    var subreddit = await GetAll()
                         .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
                     return subreddit ?? throw new EntityNotFoundException($"Subreddit with id {id} not found");
                 }
