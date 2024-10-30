@@ -331,6 +331,13 @@ namespace SongAcronymBot.Core.Services
                             Console.WriteLine($"DEBUG :: Failed to process comment - {ex.Message}");
                         }
                     }
+                    catch (RedditException ex) when (ex.Message.Contains("TooManyRequests"))
+                    {
+                        if (Debug)
+                        {
+                            Console.WriteLine($"DEBUG :: Rate limited by Reddit API - {ex.Message}");
+                        }
+                    }
                 });
 
                 await Task.WhenAll(tasks);
