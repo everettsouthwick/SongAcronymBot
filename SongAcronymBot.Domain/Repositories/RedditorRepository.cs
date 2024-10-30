@@ -11,22 +11,25 @@ namespace SongAcronymBot.Domain.Repositories
 {
     public interface IRedditorRepository : IRepository<Redditor>
     {
-        Task<Redditor>? GetByIdAsync(string id);
-        Task<Redditor>? GetByNameAsync(string username);
+        Task<Redditor?> GetByIdAsync(string id);
+        Task<Redditor?> GetByNameAsync(string username);
         Task<List<Redditor>> GetAllDisabled();
     }
 
     public class RedditorRepository : Repository<Redditor>, IRedditorRepository
     {
+        private readonly SongAcronymBotContext _context;
+
         public RedditorRepository(SongAcronymBotContext context) : base(context)
         {
+            _context = context;
         }
 
-        public async Task<Redditor>? GetByIdAsync(string id)
+        public async Task<Redditor?> GetByIdAsync(string id)
         {
             try
             {
-                return await GetAll().SingleOrDefaultAsync(x => x.Id == id);
+                return await _context.Set<Redditor>().AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
             }
             catch (Exception ex)
             {
@@ -34,11 +37,11 @@ namespace SongAcronymBot.Domain.Repositories
             }
         }
 
-        public async Task<Redditor>? GetByNameAsync(string username)
+        public async Task<Redditor?> GetByNameAsync(string username)
         {
             try
             {
-                return await GetAll().SingleOrDefaultAsync(x => x.Username == username);
+                return await _context.Set<Redditor>().AsNoTracking().SingleOrDefaultAsync(x => x.Username == username);
             }
             catch (Exception ex)
             {
@@ -50,7 +53,7 @@ namespace SongAcronymBot.Domain.Repositories
         {
             try
             {
-                return await GetAll().Where(x => !x.Enabled).ToListAsync();
+                return await _context.Set<Redditor>().AsNoTracking().Where(x => !x.Enabled).ToListAsync();
             }
             catch (Exception ex)
             {

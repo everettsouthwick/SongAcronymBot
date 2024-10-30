@@ -10,12 +10,12 @@ namespace SongAcronymBot.Domain.Repositories
 
     public class ExcludedRepository : IExcludedRepository
     {
-        private List<string> ExcludedAcronyms;
+        private readonly List<string> ExcludedAcronyms;
         private readonly string ResourceName = "SongAcronymBot.Domain.Files.ExcludedAcronyms.txt";
 
         public ExcludedRepository()
         {
-            BuildExcludedRepository();
+            ExcludedAcronyms = BuildExcludedRepository();
         }
 
         public bool Contains(string acronym)
@@ -23,15 +23,13 @@ namespace SongAcronymBot.Domain.Repositories
             return ExcludedAcronyms.Contains(acronym);
         }
 
-        private void BuildExcludedRepository()
+        private List<string> BuildExcludedRepository()
         {
-            ExcludedAcronyms = ReadLines(() => Assembly.GetExecutingAssembly()
-                                    .GetManifestResourceStream(ResourceName),
-                      Encoding.UTF8)
-                .ToList();
+            var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ResourceName) ?? throw new InvalidOperationException($"Could not find embedded resource {ResourceName}");
+            return ReadLines(() => stream, Encoding.UTF8).ToList();
         }
 
-        public static IEnumerable<string> ReadLines(Func<Stream> streamProvider, Encoding encoding)
+        private static IEnumerable<string> ReadLines(Func<Stream> streamProvider, Encoding encoding)
         {
             using var stream = streamProvider();
             using var reader = new StreamReader(stream, encoding);
