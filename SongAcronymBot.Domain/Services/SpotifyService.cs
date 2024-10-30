@@ -318,9 +318,13 @@ namespace SongAcronymBot.Domain.Services
                         throw;
 
                     if (ex.Response.Headers.TryGetValue("Retry-After", out var value) && int.TryParse(value, out var retryAfter))
+                    {
                         await Task.Delay(retryAfter * 1000);
+                    }
                     else
+                    {
                         await Task.Delay(delay);
+                    }
 
                     delay *= 2;
                     retries++;
