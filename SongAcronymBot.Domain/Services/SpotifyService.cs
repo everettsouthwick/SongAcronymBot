@@ -16,22 +16,38 @@ namespace SongAcronymBot.Domain.Services
 
         Task<List<Acronym>> GetAcronymsFromSpotifyTrackAsync(SpotifyRequest request);
 
-        Task<Acronym> SearchAcronymAsync(string acronym);
+        Task<Acronym?> SearchAcronymAsync(string acronym);
     }
 
-    public class SpotifyService(
-        IAcronymRepository acronymRepository,
-        ISubredditRepository subredditRepository,
-        IExcludedRepository excludedRepository,
-        IOptions<SpotifyConfiguration> options) : ISpotifyService
+    public partial class SpotifyService : ISpotifyService
     {
-        private readonly SpotifyConfiguration _configuration = options.Value;
-        private readonly IAcronymRepository _acronymRepository = acronymRepository;
-        private readonly ISubredditRepository _subredditRepository = subredditRepository;
-        private readonly IExcludedRepository _excludedRepository = excludedRepository;
+        private readonly SpotifyConfiguration _configuration;
+        private readonly IAcronymRepository _acronymRepository;
+        private readonly ISubredditRepository _subredditRepository;
+        private readonly IExcludedRepository _excludedRepository;
+
+        public SpotifyService(
+            IAcronymRepository acronymRepository,
+            ISubredditRepository subredditRepository,
+            IExcludedRepository excludedRepository,
+            IOptions<SpotifyConfiguration> options)
+        {
+            ArgumentNullException.ThrowIfNull(options?.Value);
+            ArgumentNullException.ThrowIfNull(acronymRepository);
+            ArgumentNullException.ThrowIfNull(subredditRepository);
+            ArgumentNullException.ThrowIfNull(excludedRepository);
+
+            _configuration = options.Value;
+            _acronymRepository = acronymRepository;
+            _subredditRepository = subredditRepository;
+            _excludedRepository = excludedRepository;
+        }
 
         public async Task<List<Acronym>> GetAcronymsFromSpotifyArtistAsync(SpotifyRequest request)
         {
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(request.SpotifyUrl);
+
             return await ExecuteWithRetry(async client =>
             {
                 var acronyms = new List<Acronym>();
@@ -58,6 +74,9 @@ namespace SongAcronymBot.Domain.Services
 
         public async Task<List<Acronym>> GetAcronymsFromSpotifyAlbumAsync(SpotifyRequest request, bool isId = false)
         {
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(request.SpotifyUrl);
+
             return await ExecuteWithRetry(async client =>
             {
                 var acronyms = new List<Acronym>();
@@ -75,6 +94,9 @@ namespace SongAcronymBot.Domain.Services
 
         public async Task<List<Acronym>> GetAcronymsFromSpotifyTrackAsync(SpotifyRequest request)
         {
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(request.SpotifyUrl);
+
             return await ExecuteWithRetry(async client =>
             {
                 var track = await client.Tracks.Get(GetIdFromUrl(request.SpotifyUrl), new TrackRequest { Market = "US" });
@@ -82,8 +104,10 @@ namespace SongAcronymBot.Domain.Services
             });
         }
 
-        public async Task<Acronym> SearchAcronymAsync(string acronym)
+        public async Task<Acronym?> SearchAcronymAsync(string acronym)
         {
+            ArgumentNullException.ThrowIfNull(acronym);
+
             return await ExecuteWithRetry(async client =>
             {
                 var req = new SearchRequest(SearchRequest.Types.Track, acronym.ToLower()) { Market = "US", Limit = 50 };
@@ -93,7 +117,10 @@ namespace SongAcronymBot.Domain.Services
                 foreach (var track in response.Tracks.Items)
                 {
                     var mappedTrack = MapTrackSearchResultToAcronym(track, acronym);
-                    if (mappedTrack != null) return mappedTrack;
+                    if (mappedTrack != null)
+                    {
+                        return mappedTrack;
+                    }
                 }
 
                 req.Type = SearchRequest.Types.Album;
@@ -102,7 +129,10 @@ namespace SongAcronymBot.Domain.Services
                 foreach (var album in response.Albums.Items)
                 {
                     var mappedAlbum = MapAlbumSearchResultToAcronym(album, acronym);
-                    if (mappedAlbum != null) return mappedAlbum;
+                    if (mappedAlbum != null)
+                    {
+                        return mappedAlbum;
+                    }
                 }
 
                 req.Type = SearchRequest.Types.Artist;
@@ -112,7 +142,10 @@ namespace SongAcronymBot.Domain.Services
                 foreach (var artist in response.Artists.Items)
                 {
                     var mappedArtist = MapArtistSearchResultToAcronym(artist, acronym);
-                    if (mappedArtist != null) return mappedArtist;
+                    if (mappedArtist != null)
+                    {
+                        return mappedArtist;
+                    }
                 }
 
                 return null;
@@ -129,42 +162,65 @@ namespace SongAcronymBot.Domain.Services
 
         private static string GetIdFromUrl(string url)
         {
+            ArgumentNullException.ThrowIfNull(url);
             return url.Split('/').Last().Split('?').First();
         }
 
         private static List<SimpleAlbum> CleanAlbums(List<SimpleAlbum> albums)
         {
+            ArgumentNullException.ThrowIfNull(albums);
+
             var excludeAlbums = new List<SimpleAlbum>();
-            string[] whitelist = { "taylor's version", "deluxe" };
-            string[] blacklist = { "karaoke", "live", "playlist", "anniversary", "remix", "disney+" };
-            string[] graylist = { "-", "(", ":" };
+            string[] whitelist = ["taylor's version", "deluxe"];
+            string[] blacklist = ["karaoke", "live", "playlist", "anniversary", "remix", "disney+"];
+            string[] graylist = ["-", "(", ":"];
 
             foreach (var album in albums)
             {
                 var name = album.Name.ToLower();
                 if (blacklist.Any(name.Contains) || graylist.Any(name.Contains))
+                {
                     excludeAlbums.Add(album);
+                }
                 else if (!whitelist.Any(name.Contains))
+                {
                     excludeAlbums.Add(album);
+                }
             }
 
             return albums.Except(excludeAlbums).OrderBy(x => x.ReleaseDate).GroupBy(x => x.Name).Select(x => x.First()).ToList();
         }
 
-        private async Task<List<Acronym>> MapTrackToAcronymsAsync(SimpleTrack track, FullAlbum album, string subredditId)
+        private async Task<List<Acronym>> MapTrackToAcronymsAsync(SimpleTrack track, FullAlbum album, string? subredditId)
         {
+            ArgumentNullException.ThrowIfNull(track);
+            ArgumentNullException.ThrowIfNull(album);
+
             var acronyms = new List<Acronym>();
 
             var acronymNames = GetAcronyms(track.Name);
             foreach (var acronymName in acronymNames)
             {
-                if (_excludedRepository.Contains(acronymName)) continue;
-                if (album.AlbumType != "single" && track.Name == album.Name) continue;
-                if (subredditId == null && acronymName.Length < 5) continue;
-                if (acronymName.Length < 3) continue;
+                if (_excludedRepository.Contains(acronymName))
+                {
+                    continue;
+                }
+                if (album.AlbumType != "single" && track.Name == album.Name)
+                {
+                    continue;
+                }
+                if (subredditId == null && acronymName.Length < 5)
+                {
+                    continue;
+                }
+                if (acronymName.Length < 3)
+                {
+                    continue;
+                }
 
                 var subreddit = await GetSubredditAsync(subredditId, acronymName);
                 if (subreddit != null && await VerifyUniqueAcronymAsync(acronymName, subreddit.Id))
+                {
                     acronyms.Add(new Acronym
                     {
                         AcronymName = acronymName,
@@ -176,24 +232,37 @@ namespace SongAcronymBot.Domain.Services
                         TrackName = track.Name,
                         YearReleased = album.ReleaseDatePrecision == "year" ? album.ReleaseDate : Convert.ToDateTime(album.ReleaseDate).Year.ToString()
                     });
+                }
             }
 
             return acronyms;
         }
 
-        private async Task<List<Acronym>> MapTrackToAcronymsAsync(FullTrack track, string subredditId)
+        private async Task<List<Acronym>> MapTrackToAcronymsAsync(FullTrack track, string? subredditId)
         {
+            ArgumentNullException.ThrowIfNull(track);
+
             var acronyms = new List<Acronym>();
             var acronymNames = GetAcronyms(track.Name);
 
             foreach (var acronymName in acronymNames)
             {
-                if (_excludedRepository.Contains(acronymName)) continue;
-                if (subredditId == null && acronymName.Length < 5) continue;
-                if (acronymName.Length < 3) continue;
+                if (_excludedRepository.Contains(acronymName))
+                {
+                    continue;
+                }
+                if (subredditId == null && acronymName.Length < 5)
+                {
+                    continue;
+                }
+                if (acronymName.Length < 3)
+                {
+                    continue;
+                }
 
                 var subreddit = await GetSubredditAsync(subredditId, acronymName);
                 if (subreddit != null && await VerifyUniqueAcronymAsync(acronymName, subreddit.Id))
+                {
                     acronyms.Add(new Acronym
                     {
                         AcronymName = acronymName,
@@ -205,16 +274,22 @@ namespace SongAcronymBot.Domain.Services
                         TrackName = track.Name,
                         YearReleased = track.Album.ReleaseDatePrecision == "year" ? track.Album.ReleaseDate : Convert.ToDateTime(track.Album.ReleaseDate).Year.ToString()
                     });
+                }
             }
 
             return acronyms;
         }
 
-        private static Acronym MapArtistSearchResultToAcronym(FullArtist artist, string acronym)
+        private static Acronym? MapArtistSearchResultToAcronym(FullArtist artist, string acronym)
         {
+            ArgumentNullException.ThrowIfNull(artist);
+            ArgumentNullException.ThrowIfNull(acronym);
+
             var acronymNames = GetAcronyms(artist.Name);
             if (!acronymNames.Any(x => x.Equals(acronym, StringComparison.OrdinalIgnoreCase)))
+            {
                 return null;
+            }
 
             return new Acronym
             {
@@ -225,11 +300,16 @@ namespace SongAcronymBot.Domain.Services
             };
         }
 
-        private static Acronym MapAlbumSearchResultToAcronym(SimpleAlbum album, string acronym)
+        private static Acronym? MapAlbumSearchResultToAcronym(SimpleAlbum album, string acronym)
         {
+            ArgumentNullException.ThrowIfNull(album);
+            ArgumentNullException.ThrowIfNull(acronym);
+
             var acronymNames = GetAcronyms(album.Name);
             if (!acronymNames.Any(x => x.Equals(acronym, StringComparison.OrdinalIgnoreCase)))
+            {
                 return null;
+            }
 
             return new Acronym
             {
@@ -242,11 +322,16 @@ namespace SongAcronymBot.Domain.Services
             };
         }
 
-        private static Acronym MapTrackSearchResultToAcronym(FullTrack track, string acronym)
+        private static Acronym? MapTrackSearchResultToAcronym(FullTrack track, string acronym)
         {
+            ArgumentNullException.ThrowIfNull(track);
+            ArgumentNullException.ThrowIfNull(acronym);
+
             var acronymNames = GetAcronyms(track.Name);
             if (!acronymNames.Any(x => x.Equals(acronym, StringComparison.OrdinalIgnoreCase)))
+            {
                 return null;
+            }
 
             return new Acronym
             {
@@ -262,9 +347,11 @@ namespace SongAcronymBot.Domain.Services
 
         private static List<string> GetAcronyms(string name)
         {
+            ArgumentNullException.ThrowIfNull(name);
+
             name = name.Split('(').First().Split('-').First();
-            name = Regex.Replace(name, @"[^a-zA-Z0-9]", "").ToUpperInvariant().Trim();
-            var acronym = string.Concat(name.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s[0]));
+            name = Regex.Replace(name, "[^a-zA-Z0-9]", "").ToUpperInvariant().Trim();
+            var acronym = string.Concat(name.Split([' '], StringSplitOptions.RemoveEmptyEntries).Select(s => s[0]));
 
             var acronyms = new List<string> { acronym };
             if (acronym.Contains('&'))
@@ -273,26 +360,35 @@ namespace SongAcronymBot.Domain.Services
                 acronyms.Add(acronym.Replace("&", ""));
             }
             if (acronym.Contains('/'))
+            {
                 acronyms.Add(acronym.Replace("/", ""));
+            }
 
             return acronyms;
         }
 
-        private async Task<Subreddit> GetSubredditAsync(string subredditId, string acronym)
+        private async Task<Subreddit?> GetSubredditAsync(string? subredditId, string acronym)
         {
+            ArgumentNullException.ThrowIfNull(acronym);
+
             return acronym.Length >= 5
                 ? await _subredditRepository.GetByIdAsync("global")
-                : await _subredditRepository.GetByIdAsync(subredditId);
+                : await _subredditRepository.GetByIdAsync(subredditId!);
         }
 
         private async Task<bool> VerifyUniqueAcronymAsync(string acronym, string subredditId)
         {
+            ArgumentNullException.ThrowIfNull(acronym);
+            ArgumentNullException.ThrowIfNull(subredditId);
+
             var existingAcronyms = await _acronymRepository.GetAllBySubredditIdAsync(subredditId);
             return !existingAcronyms.Any(x => x.AcronymName == acronym);
         }
 
         private async Task<T> ExecuteWithRetry<T>(Func<SpotifyClient, Task<T>> action)
         {
+            ArgumentNullException.ThrowIfNull(action);
+
             int maxRetries = 5;
             int delay = 1000;
             int retries = 0;
@@ -307,7 +403,9 @@ namespace SongAcronymBot.Domain.Services
                 catch (APITooManyRequestsException ex)
                 {
                     if (retries >= maxRetries)
+                    {
                         throw;
+                    }
 
                     if (ex.Response.Headers.TryGetValue("Retry-After", out var value) && int.TryParse(value, out var retryAfter))
                     {
@@ -326,6 +424,11 @@ namespace SongAcronymBot.Domain.Services
 
         private static async Task LoadAllItems<T>(SpotifyClient client, Paging<T> paging, ArtistsAlbumsRequest req, Func<SpotifyClient, ArtistsAlbumsRequest, Task<Paging<T>>> getAlbumsFunc)
         {
+            ArgumentNullException.ThrowIfNull(client);
+            ArgumentNullException.ThrowIfNull(paging);
+            ArgumentNullException.ThrowIfNull(req);
+            ArgumentNullException.ThrowIfNull(getAlbumsFunc);
+
             int i = 1;
             while (paging.Items.Count < paging.Total)
             {
