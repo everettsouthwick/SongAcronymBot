@@ -11,15 +11,18 @@ namespace SongAcronymBot.Domain.Repositories
 
     public class SubredditRepository : Repository<Subreddit>, ISubredditRepository
     {
+        private readonly SongAcronymBotContext _context;
+
         public SubredditRepository(SongAcronymBotContext context) : base(context)
         {
+            _context = context;
         }
 
         public async Task<Subreddit> GetByIdAsync(string id)
         {
             try
             {
-                var subreddit = await GetAll().SingleOrDefaultAsync(x => x.Id == id);
+                var subreddit = await _context.Set<Subreddit>().AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
                 return subreddit ?? throw new EntityNotFoundException($"Subreddit with id {id} not found");
             }
             catch (Exception ex)

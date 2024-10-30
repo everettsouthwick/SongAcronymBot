@@ -18,11 +18,13 @@ namespace SongAcronymBot.Domain.Repositories
 
     public class Repository<TEntity> : IRepository<TEntity> where TEntity : class, new()
     {
-        private readonly SongAcronymBotContext _context;
+        protected readonly SongAcronymBotContext _context;
+        private readonly SemaphoreSlim _semaphore;
 
         public Repository(SongAcronymBotContext context)
         {
             _context = context;
+            _semaphore = new SemaphoreSlim(1, 1);
         }
 
         public IQueryable<TEntity> GetAll()
@@ -39,61 +41,64 @@ namespace SongAcronymBot.Domain.Repositories
 
         public async Task<TEntity> AddAsync(TEntity entity)
         {
-            if (entity == null)
-            {
-                throw new ArgumentNullException($"{nameof(AddAsync)} entity must not be null");
-            }
+            ArgumentNullException.ThrowIfNull(entity);
 
             try
             {
+                await _semaphore.WaitAsync();
                 await _context.AddAsync(entity);
                 await _context.SaveChangesAsync();
-
                 return entity;
             }
             catch (Exception ex)
             {
                 throw new Exception($"{nameof(entity)} could not be saved: {ex.Message}");
             }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
 
         public async Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities)
         {
-            if (entities == null)
-            {
-                throw new ArgumentNullException($"{nameof(AddRangeAsync)} entities must not be null");
-            }
+            ArgumentNullException.ThrowIfNull(entities);
 
             try
             {
+                await _semaphore.WaitAsync();
                 await _context.AddRangeAsync(entities);
                 await _context.SaveChangesAsync();
-
                 return entities;
             }
             catch (Exception ex)
             {
                 throw new Exception($"{nameof(entities)} could not be saved: {ex.Message}");
             }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
 
         public async Task<TEntity> UpdateAsync(TEntity entity)
         {
-            if (entity == null)
-            {
-                throw new ArgumentNullException($"{nameof(UpdateAsync)} entity must not be null");
-            }
+            ArgumentNullException.ThrowIfNull(entity);
 
             try
             {
+                await _semaphore.WaitAsync();
                 _context.Update(entity);
                 await _context.SaveChangesAsync();
-
                 return entity;
             }
             catch (Exception ex)
             {
                 throw new Exception($"{nameof(entity)} could not be updated: {ex.Message}");
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
     }
