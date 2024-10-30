@@ -218,7 +218,7 @@ namespace SongAcronymBot.Domain.Services
             return acronyms;
         }
 
-        private Acronym MapArtistSearchResultToAcronym(FullArtist artist, string acronym)
+        private static Acronym MapArtistSearchResultToAcronym(FullArtist artist, string acronym)
         {
             var acronymNames = GetAcronyms(artist.Name);
             if (!acronymNames.Any(x => x.Equals(acronym, StringComparison.OrdinalIgnoreCase)))
@@ -233,7 +233,7 @@ namespace SongAcronymBot.Domain.Services
             };
         }
 
-        private Acronym MapAlbumSearchResultToAcronym(SimpleAlbum album, string acronym)
+        private static Acronym MapAlbumSearchResultToAcronym(SimpleAlbum album, string acronym)
         {
             var acronymNames = GetAcronyms(album.Name);
             if (!acronymNames.Any(x => x.Equals(acronym, StringComparison.OrdinalIgnoreCase)))
@@ -250,7 +250,7 @@ namespace SongAcronymBot.Domain.Services
             };
         }
 
-        private Acronym MapTrackSearchResultToAcronym(FullTrack track, string acronym)
+        private static Acronym MapTrackSearchResultToAcronym(FullTrack track, string acronym)
         {
             var acronymNames = GetAcronyms(track.Name);
             if (!acronymNames.Any(x => x.Equals(acronym, StringComparison.OrdinalIgnoreCase)))
@@ -328,7 +328,7 @@ namespace SongAcronymBot.Domain.Services
             }
         }
 
-        private async Task LoadAllItems<T>(SpotifyClient client, Paging<T> paging, ArtistsAlbumsRequest req, Func<SpotifyClient, ArtistsAlbumsRequest, Task<Paging<T>>> getAlbumsFunc)
+        private static async Task LoadAllItems<T>(SpotifyClient client, Paging<T> paging, ArtistsAlbumsRequest req, Func<SpotifyClient, ArtistsAlbumsRequest, Task<Paging<T>>> getAlbumsFunc)
         {
             int i = 1;
             while (paging.Items.Count < paging.Total)

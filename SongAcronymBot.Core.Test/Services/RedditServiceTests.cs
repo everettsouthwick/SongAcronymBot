@@ -63,7 +63,7 @@ namespace SongAcronymBot.Core.Test.Services
 
         private void MockGlobalAcronyms()
         {
-            mockAcronymRepository.Setup(x => x.GetAllGlobalAcronyms()).ReturnsAsync(new List<Acronym>());
+            mockAcronymRepository.Setup(x => x.GetAllGlobalAcronyms()).ReturnsAsync([]);
         }
 
         private void MockSubredditAcronyms(string subredditName)
@@ -77,7 +77,7 @@ namespace SongAcronymBot.Core.Test.Services
             mockAcronymRepository.Setup(x => x.GetAllBySubredditNameAsync(subredditName)).ReturnsAsync(acronyms);
         }
 
-        private Acronym CreateFakeAcronym(string acronym)
+        private static Acronym CreateFakeAcronym(string acronym)
         {
             return new Acronym
             {
