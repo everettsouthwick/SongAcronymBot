@@ -28,16 +28,13 @@ else
 services.AddDbContext<SongAcronymBotContext>(options =>
 {
     options.UseSqlServer(debug ? config.GetConnectionString("Local") : config.GetConnectionString("Production"));
-    options.EnableSensitiveDataLogging();
-}, ServiceLifetime.Scoped); // Change to scoped lifetime
+}, ServiceLifetime.Transient);
 
-// Change repositories to scoped lifetime
-services.AddScoped<IAcronymRepository, AcronymRepository>();
-services.AddScoped<IRedditorRepository, RedditorRepository>();
-services.AddScoped<ISubredditRepository, SubredditRepository>();
-services.AddScoped<IExcludedRepository, ExcludedRepository>();
+services.AddTransient<IAcronymRepository, AcronymRepository>();
+services.AddTransient<IRedditorRepository, RedditorRepository>();
+services.AddTransient<ISubredditRepository, SubredditRepository>();
+services.AddTransient<IExcludedRepository, ExcludedRepository>();
 
-// Keep these transient
 services.AddTransient<IRedditService, RedditService>();
 services.AddTransient<ISpotifyService, SpotifyService>();
 services.Configure<SpotifyConfiguration>(config.GetSection("Spotify"));
