@@ -16,7 +16,7 @@ namespace SongAcronymBot.Domain.Repositories
 
     public class AcronymRepository : Repository<Acronym>, IAcronymRepository
     {
-        private readonly SongAcronymBotContext _context;
+        private new readonly SongAcronymBotContext _context;
 
         public AcronymRepository(SongAcronymBotContext context) : base(context)
         {

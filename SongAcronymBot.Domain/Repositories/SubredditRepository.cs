@@ -11,7 +11,7 @@ namespace SongAcronymBot.Domain.Repositories
 
     public class SubredditRepository : Repository<Subreddit>, ISubredditRepository
     {
-        private readonly SongAcronymBotContext _context;
+        private new readonly SongAcronymBotContext _context;
 
         public SubredditRepository(SongAcronymBotContext context) : base(context)
         {

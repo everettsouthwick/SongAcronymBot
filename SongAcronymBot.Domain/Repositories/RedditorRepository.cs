@@ -18,7 +18,7 @@ namespace SongAcronymBot.Domain.Repositories
 
     public class RedditorRepository : Repository<Redditor>, IRedditorRepository
     {
-        private readonly SongAcronymBotContext _context;
+        private new readonly SongAcronymBotContext _context;
 
         public RedditorRepository(SongAcronymBotContext context) : base(context)
         {
