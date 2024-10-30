@@ -23,6 +23,7 @@ namespace SongAcronymBot.Core.Services
         private readonly ISubredditRepository _subredditRepository;
         private readonly ISpotifyService _spotifyService;
         private readonly SemaphoreSlim _dbSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _commentSemaphore = new(1, 1);
 
         private RedditClient Reddit = null!;
         private List<Redditor> DisabledRedditors = null!;
@@ -299,23 +300,31 @@ namespace SongAcronymBot.Core.Services
 
         private async void Comments_NewUpdated(object? sender, CommentsUpdateEventArgs e)
         {
-            foreach (Comment comment in e.Added)
+            await _commentSemaphore.WaitAsync();
+            try
             {
-                if (Debug)
-                {
-                    Console.WriteLine($"DEBUG :: New comment {comment.Subreddit} - {comment.Root.Title}");
-                }
-                try
-                {
-                    await ProcessCommentAsync(comment);
-                }
-                catch (RedditForbiddenException ex)
+                foreach (Comment comment in e.Added)
                 {
                     if (Debug)
                     {
-                        Console.WriteLine($"DEBUG :: Failed to process comment - {ex.Message}");
+                        Console.WriteLine($"DEBUG :: New comment {comment.Subreddit} - {comment.Root.Title}");
+                    }
+                    try
+                    {
+                        await ProcessCommentAsync(comment);
+                    }
+                    catch (RedditForbiddenException ex)
+                    {
+                        if (Debug)
+                        {
+                            Console.WriteLine($"DEBUG :: Failed to process comment - {ex.Message}");
+                        }
                     }
                 }
+            }
+            finally
+            {
+                _commentSemaphore.Release();
             }
         }
 
