@@ -2,6 +2,7 @@
 using Reddit;
 using Reddit.Controllers;
 using Reddit.Controllers.EventArgs;
+using Reddit.Exceptions;
 using SongAcronymBot.Core.Model;
 using SongAcronymBot.Domain.Enum;
 using SongAcronymBot.Domain.Models;
@@ -22,22 +23,21 @@ namespace SongAcronymBot.Core.Services
         private readonly ISubredditRepository _subredditRepository;
         private readonly ISpotifyService _spotifyService;
 
-        private RedditClient Reddit;
-        private List<Redditor> DisabledRedditors;
+        private RedditClient Reddit = null!;
+        private List<Redditor> DisabledRedditors = null!;
         private bool Debug;
 
         public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService)
         {
-            _acronymRepository = acronymRepository;
-            _redditorRepository = redditorRepository;
-            _subredditRepository = subredditRepository;
-            _spotifyService = spotifyService;
+            _acronymRepository = acronymRepository ?? throw new ArgumentNullException(nameof(acronymRepository));
+            _redditorRepository = redditorRepository ?? throw new ArgumentNullException(nameof(redditorRepository));
+            _subredditRepository = subredditRepository ?? throw new ArgumentNullException(nameof(subredditRepository));
+            _spotifyService = spotifyService ?? throw new ArgumentNullException(nameof(spotifyService));
         }
 
         public async Task StartAsync(RedditClient reddit, bool debug = false)
         {
-            if (_acronymRepository == null || _redditorRepository == null || _subredditRepository == null || _spotifyService == null || reddit == null)
-                throw new NullReferenceException();
+            ArgumentNullException.ThrowIfNull(reddit);
 
             Reddit = reddit;
             DisabledRedditors = await _redditorRepository.GetAllDisabled();
@@ -65,7 +65,9 @@ namespace SongAcronymBot.Core.Services
             foreach (Reddit.Things.Message message in e.Added)
             {
                 if (Debug)
+                {
                     Console.WriteLine($"DEBUG :: New unread message {message.Author} - {message.Body}");
+                }
                 await ProcessMessageAsync(message);
             }
         }
@@ -73,18 +75,26 @@ namespace SongAcronymBot.Core.Services
         private async Task ProcessMessageAsync(Reddit.Things.Message message)
         {
             if (await IsBadBotAsync(message))
+            {
                 return;
+            }
 
             if (await IsDeleteAsync(message))
+            {
                 return;
+            }
 
             if (IsNotSummon(message))
+            {
                 return;
+            }
 
             var matches = await FindAcronymsAsync(message);
 
-            if (!matches.Any())
+            if (matches.Count == 0)
+            {
                 return;
+            }
 
             var replyBody = "";
             foreach (var match in matches)
@@ -94,23 +104,39 @@ namespace SongAcronymBot.Core.Services
             replyBody = FormatReplyBodyWithFooter(replyBody, message.Author);
 
             if (Debug)
+            {
                 Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
+            }
 
-            var comment = Reddit.Comment($"t1_{message.Id}").About();
-            await comment.ReplyAsync(replyBody);
+            try
+            {
+                var comment = Reddit.Comment($"t1_{message.Id}").About();
+                await comment.ReplyAsync(replyBody);
+            }
+            catch (RedditForbiddenException ex)
+            {
+                if (Debug)
+                {
+                    Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
+                }
+            }
         }
 
         private async Task<bool> IsBadBotAsync(Reddit.Things.Message message)
         {
-            if (message.Subject != "comment reply" || message.Body.ToLower() != "bad bot")
+            if (message.Subject != "comment reply" || !message.Body.Equals("bad bot", StringComparison.CurrentCultureIgnoreCase))
+            {
                 return false;
+            }
 
             var parent = Reddit.Comment(message.ParentId).About();
 
-            if (parent.Author.ToLower() == "songacronymbot")
+            if (parent.Author.Equals("songacronymbot", StringComparison.CurrentCultureIgnoreCase))
             {
                 if (parent.UpVotes < 5)
+                {
                     await parent.DeleteAsync();
+                }
 
                 await AddOrUpdateRedditor(message.Id, message.Author, false);
                 DisabledRedditors = await _redditorRepository.GetAllDisabled();
@@ -123,15 +149,19 @@ namespace SongAcronymBot.Core.Services
 
         private async Task<bool> IsDeleteAsync(Reddit.Things.Message message)
         {
-            if (message.Subject != "comment reply" || message.Body.ToLower() != "delete")
+            if (message.Subject != "comment reply" || !message.Body.Equals("delete", StringComparison.CurrentCultureIgnoreCase))
+            {
                 return false;
+            }
 
             var parent = Reddit.Comment(message.ParentId).About();
 
-            if (parent.Author.ToLower() != "songacronymbot")
+            if (!parent.Author.Equals("songacronymbot", StringComparison.CurrentCultureIgnoreCase))
+            {
                 return false;
+            }
 
-            if (parent.Body.ToLower().Contains(message.Author.ToLower()))
+            if (parent.Body.Contains(message.Author, StringComparison.CurrentCultureIgnoreCase))
             {
                 await parent.DeleteAsync();
                 await AddOrUpdateRedditor(message.Id, message.Author, false);
@@ -142,10 +172,12 @@ namespace SongAcronymBot.Core.Services
             return false;
         }
 
-        private bool IsNotSummon(Reddit.Things.Message message)
+        private static bool IsNotSummon(Reddit.Things.Message message)
         {
             if (message.Subject == "username mention" && message.WasComment)
+            {
                 return false;
+            }
 
             return true;
         }
@@ -160,15 +192,21 @@ namespace SongAcronymBot.Core.Services
             {
                 var acronyms = (await _acronymRepository.GetAllByNameAsync(query)).GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
                 foreach (var acronym in acronyms)
+                {
                     matches.Add(new AcronymMatch(acronym, index));
+                }
 
-                if (!acronyms.Any())
+                if (acronyms.Count == 0)
                 {
                     var acronym = await _spotifyService.SearchAcronymAsync(query);
                     if (acronym != null)
+                    {
                         matches.Add(new AcronymMatch(acronym, index));
+                    }
                     else
+                    {
                         matches.Add(new AcronymMatch(query, index));
+                    }
                 }
 
                 index++;
@@ -177,19 +215,23 @@ namespace SongAcronymBot.Core.Services
             return matches;
         }
 
-        private List<string> ParseAcronymsFromMention(Reddit.Things.Message message)
+        private static List<string> ParseAcronymsFromMention(Reddit.Things.Message message)
         {
             var acronymsToQuery = new List<string>();
 
             var words = message.Body.ToUpper().Split(' ');
 
             if (!words[0].Contains("SONGACRONYMBOT"))
+            {
                 return acronymsToQuery;
+            }
 
             foreach (var word in words)
             {
                 if (word.Contains("SONGACRONYMBOT"))
+                {
                     continue;
+                }
 
                 acronymsToQuery.Add(word.Trim());
             }
@@ -206,7 +248,9 @@ namespace SongAcronymBot.Core.Services
             foreach (Comment comment in e.Added)
             {
                 if (Debug)
+                {
                     Console.WriteLine($"DEBUG :: New comment {comment.Subreddit} - {comment.Root.Title}");
+                }
                 await ProcessCommentAsync(comment);
             }
         }
@@ -214,15 +258,21 @@ namespace SongAcronymBot.Core.Services
         private async Task ProcessCommentAsync(Comment comment)
         {
             if (!IsRepliable(comment))
+            {
                 return;
+            }
 
             if (await IsOptInOrOptOutAsync(comment))
+            {
                 return;
+            }
 
             var matches = await FindAcronymsAsync(comment);
 
-            if (!matches.Any())
+            if (matches.Count == 0)
+            {
                 return;
+            }
 
             var replyBody = "";
             foreach (var match in matches)
@@ -232,26 +282,42 @@ namespace SongAcronymBot.Core.Services
             replyBody = FormatReplyBodyWithFooter(replyBody, comment.Author);
 
             if (Debug)
+            {
                 Console.WriteLine($"DEBUG :: REPLY BODY: {replyBody}");
+            }
 
-            await comment.ReplyAsync(replyBody);
+            try
+            {
+                await comment.ReplyAsync(replyBody);
+            }
+            catch (RedditForbiddenException ex)
+            {
+                if (Debug)
+                {
+                    Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
+                }
+            }
         }
 
         private bool IsRepliable(Comment comment)
         {
             // Do not reply to our own submissions
-            if (comment.Author.ToLower() == "songacronymbot")
+            if (comment.Author.Equals("songacronymbot", StringComparison.CurrentCultureIgnoreCase))
             {
                 if (Debug)
+                {
                     Console.WriteLine("DEBUG :: SKIPPING BECAUSE AUTHOR IS SELF");
+                }
                 return false;
             }
 
             // Do not reply to submissions by someone who has disabled us
-            if (DisabledRedditors.Any(x => x.Username.ToLower() == comment.Author.ToLower()))
+            if (DisabledRedditors.Any(x => x.Username.Equals(comment.Author, StringComparison.CurrentCultureIgnoreCase)))
             {
                 if (Debug)
+                {
                     Console.WriteLine("DEBUG :: SKIPPING BECAUSE AUTHOR IS DISABLED");
+                }
                 return false;
             }
 
@@ -260,25 +326,51 @@ namespace SongAcronymBot.Core.Services
 
         private async Task<bool> IsOptInOrOptOutAsync(Comment comment)
         {
-            if (comment.Root.Id.ToLower() == "j9yq8q")
-                if (comment.Body.ToLower() == "optout")
+            if (comment.Root.Id.Equals("j9yq8q", StringComparison.CurrentCultureIgnoreCase))
+            {
+                if (comment.Body.Equals("optout", StringComparison.CurrentCultureIgnoreCase))
                 {
                     if (Debug)
+                    {
                         Console.WriteLine("DEBUG :: USER OPTOUT");
+                    }
                     await AddOrUpdateRedditor(comment.Id, comment.Author, false);
-                    await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been disabled from receiving automatic replies.\n", comment.Author));
+                    try
+                    {
+                        await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been disabled from receiving automatic replies.\n", comment.Author));
+                    }
+                    catch (RedditForbiddenException ex)
+                    {
+                        if (Debug)
+                        {
+                            Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
+                        }
+                    }
                     DisabledRedditors = await _redditorRepository.GetAllDisabled();
                     return true;
                 }
-                else if (comment.Body.ToLower() == "optin")
+                else if (comment.Body.Equals("optin", StringComparison.CurrentCultureIgnoreCase))
                 {
                     if (Debug)
+                    {
                         Console.WriteLine("DEBUG :: USER OPTIN");
+                    }
                     await AddOrUpdateRedditor(comment.Id, comment.Author, true);
-                    await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been enabled for receiving automatic replies.\n", comment.Author));
+                    try
+                    {
+                        await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been enabled for receiving automatic replies.\n", comment.Author));
+                    }
+                    catch (RedditForbiddenException ex)
+                    {
+                        if (Debug)
+                        {
+                            Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
+                        }
+                    }
                     DisabledRedditors = await _redditorRepository.GetAllDisabled();
                     return true;
                 }
+            }
 
             return false;
         }
@@ -293,7 +385,9 @@ namespace SongAcronymBot.Core.Services
             foreach (var acronym in acronyms)
             {
                 if (IsMatch(comment, acronym, out int index))
+                {
                     matches.Add(new AcronymMatch(acronym, index));
+                }
             }
 
             return matches.OrderBy(x => x.Position).ToList();
@@ -303,11 +397,13 @@ namespace SongAcronymBot.Core.Services
         {
             index = -1;
 
-            var body = comment.Body.ToLower();
-            var acronymName = acronym?.AcronymName?.ToLower();
-
-            if (acronymName == null)
+            if (acronym?.AcronymName == null)
+            {
                 return false;
+            }
+
+            var body = comment.Body.ToLower();
+            var acronymName = acronym.AcronymName.ToLower();
 
             index = body.IndexOf(acronymName);
             if (index != -1)
@@ -321,12 +417,16 @@ namespace SongAcronymBot.Core.Services
                     acronymName = String.Concat(Array.FindAll(acronymName.ToCharArray(), Char.IsLetterOrDigit));
 
                     if (match == acronymName)
+                    {
                         if (IsUnrepliedAndUndefined(comment, acronym))
                         {
                             if (Debug)
+                            {
                                 Console.WriteLine($"DEBUG :: MATCHED WORD: {match}");
+                            }
                             return true;
                         }
+                    }
                 }
                 catch (Exception)
                 {
@@ -339,36 +439,47 @@ namespace SongAcronymBot.Core.Services
 
         private bool IsUnrepliedAndUndefined(Comment comment, Acronym acronym)
         {
-            var acronymName = acronym?.AcronymName?.ToLower();
-            var definition = acronym?.AcronymType switch
+            if (acronym?.AcronymName == null)
             {
-                AcronymType.Album => acronym?.AlbumName?.ToLower(),
-                AcronymType.Artist => acronym?.ArtistName?.ToLower(),
-                AcronymType.Single => acronym?.TrackName?.ToLower(),
-                AcronymType.Track => acronym?.TrackName?.ToLower(),
-                _ => acronym?.TrackName?.ToLower()
+                return true;
+            }
+
+            var acronymName = acronym.AcronymName.ToLower();
+            var definition = acronym.AcronymType switch
+            {
+                AcronymType.Album => acronym.AlbumName?.ToLower(),
+                AcronymType.Artist => acronym.ArtistName?.ToLower(),
+                AcronymType.Single => acronym.TrackName?.ToLower(),
+                AcronymType.Track => acronym.TrackName?.ToLower(),
+                _ => acronym.TrackName?.ToLower()
             };
 
-            if (acronymName == null || definition == null)
+            if (definition == null)
+            {
                 return true;
+            }
 
             var root = comment.Root;
             var replies = GetCommentTree(root.Comments.GetComments(limit: 500));
 
-            if (root.Title.ToLower().Contains(definition))
+            if (root.Title.Contains(definition, StringComparison.CurrentCultureIgnoreCase))
+            {
                 return false;
+            }
 
             foreach (var reply in replies)
             {
                 var body = reply.Body.ToLower();
-                if ((reply.Author.ToLower() == "songacronymbot" && body.Contains(acronymName)) || body.Contains(definition))
+                if ((reply.Author.Equals("songacronymbot", StringComparison.CurrentCultureIgnoreCase) && body.Contains(acronymName)) || body.Contains(definition))
+                {
                     return false;
+                }
             }
 
             return true;
         }
 
-        private List<Comment> GetCommentTree(List<Comment> comments)
+        private static List<Comment> GetCommentTree(List<Comment> comments)
         {
             var commentTree = new List<Comment>();
             commentTree.AddRange(comments);
@@ -382,12 +493,14 @@ namespace SongAcronymBot.Core.Services
             return commentTree;
         }
 
-        private List<Comment> GetMoreChildren(Comment comment, List<Comment> commentTree)
+        private static List<Comment> GetMoreChildren(Comment comment, List<Comment> commentTree)
         {
-            List<Comment> children = new List<Comment>();
+            List<Comment> children = [];
 
             if (comment.NumReplies == 0)
+            {
                 return children;
+            }
 
             foreach (var child in comment.Replies)
             {
@@ -407,7 +520,9 @@ namespace SongAcronymBot.Core.Services
         private async void Me_CommentHistoryUpdated(object? sender, CommentsUpdateEventArgs e)
         {
             if (Debug)
+            {
                 Console.WriteLine($"DEBUG :: New comment history activity.");
+            }
 
             await ProcessCommentHistoryAsync(e.NewComments);
         }
@@ -417,7 +532,19 @@ namespace SongAcronymBot.Core.Services
             foreach (var comment in comments)
             {
                 if (comment.Score <= 0)
-                    await comment.DeleteAsync();
+                {
+                    try
+                    {
+                        await comment.DeleteAsync();
+                    }
+                    catch (RedditForbiddenException ex)
+                    {
+                        if (Debug)
+                        {
+                            Console.WriteLine($"DEBUG :: Failed to delete comment - {ex.Message}");
+                        }
+                    }
+                }
             }
         }
 
@@ -466,7 +593,7 @@ namespace SongAcronymBot.Core.Services
             return redditor;
         }
 
-        private string FormatReplyBodyWithFooter(string body, string author)
+        private static string FormatReplyBodyWithFooter(string body, string author)
         {
             var random = new Random();
             var showSeren = random.NextDouble() <= 0.01;
