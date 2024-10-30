@@ -22,13 +22,13 @@ namespace SongAcronymBot.Core.Services
         private readonly IRedditorRepository _redditorRepository;
         private readonly ISubredditRepository _subredditRepository;
         private readonly ISpotifyService _spotifyService;
-        private readonly SemaphoreSlim _dbSemaphore = new(1, 1);
-        private readonly SemaphoreSlim _commentSemaphore = new(1, 1);
-        private readonly SemaphoreSlim _acronymSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _dbSemaphore = new(3, 3); // Increased concurrency
+        private readonly SemaphoreSlim _commentSemaphore = new(5, 5); // Increased concurrency
+        private readonly SemaphoreSlim _acronymSemaphore = new(3, 3); // Increased concurrency
 
         private RedditClient Reddit = null!;
-        private List<Redditor> DisabledRedditors = null!;
-        private bool Debug;
+        private volatile List<Redditor> DisabledRedditors = null!; // Made volatile for thread safety
+        private volatile bool Debug;
 
         public RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService)
         {
@@ -84,7 +84,8 @@ namespace SongAcronymBot.Core.Services
 
         private async void Messages_UnreadUpdated(object? sender, MessagesUpdateEventArgs e)
         {
-            foreach (Reddit.Things.Message message in e.Added)
+            // Process messages concurrently
+            var tasks = e.Added.Select(async message =>
             {
                 if (Debug)
                 {
@@ -101,7 +102,9 @@ namespace SongAcronymBot.Core.Services
                         Console.WriteLine($"DEBUG :: Failed to process message - {ex.Message}");
                     }
                 }
-            }
+            });
+
+            await Task.WhenAll(tasks);
         }
 
         private async Task ProcessMessageAsync(Reddit.Things.Message message)
@@ -235,16 +238,19 @@ namespace SongAcronymBot.Core.Services
             var matches = new List<AcronymMatch>();
 
             var acronymsToQuery = ParseAcronymsFromMention(message);
-            var index = 1;
-            foreach (var query in acronymsToQuery)
+            
+            // Process acronyms concurrently
+            var tasks = acronymsToQuery.Select(async (query, index) =>
             {
                 await _dbSemaphore.WaitAsync();
                 try
                 {
                     var acronyms = (await _acronymRepository.GetAllByNameAsync(query)).GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
+                    var matchesForQuery = new List<AcronymMatch>();
+                    
                     foreach (var acronym in acronyms)
                     {
-                        matches.Add(new AcronymMatch(acronym, index));
+                        matchesForQuery.Add(new AcronymMatch(acronym, index + 1));
                     }
 
                     if (acronyms.Count == 0)
@@ -252,21 +258,24 @@ namespace SongAcronymBot.Core.Services
                         var acronym = await _spotifyService.SearchAcronymAsync(query);
                         if (acronym != null)
                         {
-                            matches.Add(new AcronymMatch(acronym, index));
+                            matchesForQuery.Add(new AcronymMatch(acronym, index + 1));
                         }
                         else
                         {
-                            matches.Add(new AcronymMatch(query, index));
+                            matchesForQuery.Add(new AcronymMatch(query, index + 1));
                         }
                     }
+
+                    return matchesForQuery;
                 }
                 finally
                 {
                     _dbSemaphore.Release();
                 }
+            });
 
-                index++;
-            }
+            var results = await Task.WhenAll(tasks);
+            matches.AddRange(results.SelectMany(x => x));
 
             return matches;
         }
@@ -304,7 +313,8 @@ namespace SongAcronymBot.Core.Services
             await _commentSemaphore.WaitAsync();
             try
             {
-                foreach (Comment comment in e.Added)
+                // Process comments concurrently
+                var tasks = e.Added.Select(async comment =>
                 {
                     if (Debug)
                     {
@@ -321,7 +331,9 @@ namespace SongAcronymBot.Core.Services
                             Console.WriteLine($"DEBUG :: Failed to process comment - {ex.Message}");
                         }
                     }
-                }
+                });
+
+                await Task.WhenAll(tasks);
             }
             finally
             {
@@ -476,13 +488,18 @@ namespace SongAcronymBot.Core.Services
                 var acronyms = await _acronymRepository.GetAllGlobalAcronyms();
                 acronyms.AddRange(await _acronymRepository.GetAllBySubredditNameAsync(comment.Subreddit.ToLower()));
 
-                foreach (var acronym in acronyms)
+                // Process acronyms concurrently
+                var tasks = acronyms.Select(async acronym =>
                 {
                     if (IsMatch(comment, acronym, out int index))
                     {
-                        matches.Add(new AcronymMatch(acronym, index));
+                        return new AcronymMatch(acronym, index);
                     }
-                }
+                    return null;
+                });
+
+                var results = await Task.WhenAll(tasks);
+                matches.AddRange(results.Where(x => x != null)!);
             }
             finally
             {
@@ -628,7 +645,8 @@ namespace SongAcronymBot.Core.Services
 
         private async Task ProcessCommentHistoryAsync(List<Comment> comments)
         {
-            foreach (var comment in comments)
+            // Process comments concurrently
+            var tasks = comments.Select(async comment =>
             {
                 if (comment.Score <= 0)
                 {
@@ -644,7 +662,9 @@ namespace SongAcronymBot.Core.Services
                         }
                     }
                 }
-            }
+            });
+
+            await Task.WhenAll(tasks);
         }
 
         #endregion Process Comment Updates
