@@ -112,7 +112,7 @@ namespace SongAcronymBot.Domain.Services
             {
                 var req = new SearchRequest(SearchRequest.Types.Track, acronym.ToLower()) { Market = "US", Limit = 50 };
                 var response = await client.Search.Item(req);
-                response.Tracks.Items = response.Tracks.Items.OrderByDescending(x => x.Popularity).ToList();
+                response.Tracks.Items = [.. response.Tracks.Items.OrderByDescending(x => x.Popularity)];
 
                 foreach (var track in response.Tracks.Items)
                 {
@@ -137,7 +137,7 @@ namespace SongAcronymBot.Domain.Services
 
                 req.Type = SearchRequest.Types.Artist;
                 response = await client.Search.Item(req);
-                response.Artists.Items = response.Artists.Items.OrderByDescending(x => x.Popularity).ToList();
+                response.Artists.Items = [.. response.Artists.Items.OrderByDescending(x => x.Popularity)];
 
                 foreach (var artist in response.Artists.Items)
                 {
