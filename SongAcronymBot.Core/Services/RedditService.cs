@@ -51,6 +51,7 @@ namespace SongAcronymBot.Core.Services
                     .SelectMany(x => x.Subreddits)
                     .Select(s => s.Name) ?? []);
                 var trackedSubreddits = reddit.Subreddit(subredditString);
+                trackedSubreddits.Comments.GetNew();
                 trackedSubreddits.Comments.MonitorNew();
                 trackedSubreddits.Comments.NewUpdated += Comments_NewUpdated;
             }
