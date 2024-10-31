@@ -641,7 +641,7 @@ namespace SongAcronymBot.Core.Services
             var serenText = serenTexts[random.Next(serenTexts.Length)];
 
             var footer = showSeren
-                ? $"^([{serenText}](https://www.getseren.com/) | [/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)"
+                ? $"[{serenText}](https://www.getseren.com/) | ^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)"
                 : $"^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
 
             return $"{body}\n---\n\n{footer}";
