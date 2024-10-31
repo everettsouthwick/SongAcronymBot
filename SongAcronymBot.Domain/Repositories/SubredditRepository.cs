@@ -6,46 +6,25 @@ namespace SongAcronymBot.Domain.Repositories
 {
     public interface ISubredditRepository : IRepository<Subreddit>
     {
-        Task<Subreddit> GetByIdAsync(string id, CancellationToken cancellationToken = default);
+        Task<Subreddit> GetByIdAsync(string id);
     }
 
-    public class SubredditRepository(SongAcronymBotContext context) : Repository<Subreddit>(context), ISubredditRepository
+    public class SubredditRepository : Repository<Subreddit>, ISubredditRepository
     {
-        private readonly AsyncLock _asyncLock = new();
+        public SubredditRepository(SongAcronymBotContext context) : base(context)
+        {
+        }
 
-        public async Task<Subreddit> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+        public async Task<Subreddit> GetByIdAsync(string id)
         {
             try
             {
-                using (await _asyncLock.LockAsync(cancellationToken))
-                {
-                    var subreddit = await GetAll()
-                        .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
-                    return subreddit ?? throw new EntityNotFoundException($"Subreddit with id {id} not found");
-                }
+                return await GetAll().SingleAsync(x => x.Id == id);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
-                throw new Exception($"Couldn't retrieve entity: {ex.Message}", ex);
+                throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
-        }
-    }
-
-    // Custom exception class
-    public class EntityNotFoundException : Exception
-    {
-        public EntityNotFoundException()
-        {
-        }
-
-        public EntityNotFoundException(string message)
-            : base(message)
-        {
-        }
-
-        public EntityNotFoundException(string message, Exception inner)
-            : base(message, inner)
-        {
         }
     }
 }

@@ -6,106 +6,92 @@ namespace SongAcronymBot.Domain.Repositories
 {
     public interface IAcronymRepository : IRepository<Acronym>
     {
-        Task<Acronym> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+        Task<Acronym> GetByIdAsync(int id);
 
-        Task<Acronym> GetByNameAsync(string name, string subredditId, CancellationToken cancellationToken = default);
+        Task<Acronym> GetByNameAsync(string name, string subredditId);
 
-        Task<List<Acronym>> GetAllByNameAsync(string name, CancellationToken cancellationToken = default);
+        Task<List<Acronym>> GetAllByNameAsync(string name);
 
-        Task<List<Acronym>> GetAllBySubredditIdAsync(string id, CancellationToken cancellationToken = default);
+        Task<List<Acronym>> GetAllBySubredditIdAsync(string id);
 
-        Task<List<Acronym>> GetAllBySubredditNameAsync(string name, CancellationToken cancellationToken = default);
+        Task<List<Acronym>> GetAllBySubredditNameAsync(string name);
 
-        Task<List<Acronym>> GetAllGlobalAcronyms(CancellationToken cancellationToken = default);
+        Task<List<Acronym>> GetAllGlobalAcronyms();
     }
 
-    public class AcronymRepository(SongAcronymBotContext context) : Repository<Acronym>(context), IAcronymRepository
+    public class AcronymRepository : Repository<Acronym>, IAcronymRepository
     {
-        private readonly AsyncLock _asyncLock = new();
+        public AcronymRepository(SongAcronymBotContext context) : base(context)
+        {
+        }
 
-        public async Task<Acronym> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+        public async Task<Acronym> GetByIdAsync(int id)
         {
             try
             {
-                using var lockToken = await _asyncLock.LockAsync(cancellationToken);
-                return await GetAll()
-                    .SingleAsync(x => x.Id == id && x.Enabled, cancellationToken);
+                return await GetAll().SingleAsync(x => x.Id == id && x.Enabled);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<Acronym> GetByNameAsync(string name, string subredditId, CancellationToken cancellationToken = default)
+        public async Task<Acronym> GetByNameAsync(string name, string subredditId)
         {
             try
             {
-                using var lockToken = await _asyncLock.LockAsync(cancellationToken);
-                return await GetAll()
-                    .SingleAsync(x => x.AcronymName == name && x.Subreddit != null && x.Subreddit.Id == subredditId, cancellationToken);
+                return await GetAll().SingleAsync(x => x.AcronymName == name && x.Subreddit.Id == subredditId);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Acronym>> GetAllByNameAsync(string name, CancellationToken cancellationToken = default)
+        public async Task<List<Acronym>> GetAllByNameAsync(string name)
         {
             try
             {
-                using var lockToken = await _asyncLock.LockAsync(cancellationToken);
-                return await GetAll()
-                    .Where(x => x.AcronymName == name)
-                    .ToListAsync(cancellationToken);
+                return await GetAll().Where(x => x.AcronymName == name).ToListAsync();
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Acronym>> GetAllBySubredditIdAsync(string id, CancellationToken cancellationToken = default)
+        public async Task<List<Acronym>> GetAllBySubredditIdAsync(string id)
         {
             try
             {
-                using var lockToken = await _asyncLock.LockAsync(cancellationToken);
-                return await GetAll()
-                    .Where(x => x.Subreddit != null && x.Subreddit.Id == id)
-                    .ToListAsync(cancellationToken);
+                return await GetAll().Where(x => x.Subreddit.Id == id).ToListAsync();
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Acronym>> GetAllBySubredditNameAsync(string name, CancellationToken cancellationToken = default)
+        public async Task<List<Acronym>> GetAllBySubredditNameAsync(string name)
         {
             try
             {
-                using var lockToken = await _asyncLock.LockAsync(cancellationToken);
-                return await GetAll()
-                    .Where(x => x.Subreddit != null && x.Subreddit.Name == name)
-                    .ToListAsync(cancellationToken);
+                return await GetAll().Where(x => x.Subreddit.Name == name).ToListAsync();
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Acronym>> GetAllGlobalAcronyms(CancellationToken cancellationToken = default)
+        public async Task<List<Acronym>> GetAllGlobalAcronyms()
         {
             try
             {
-                using var lockToken = await _asyncLock.LockAsync(cancellationToken);
-                return await GetAll()
-                    .Where(x => x.Subreddit != null && x.Subreddit.Id == "global")
-                    .ToListAsync(cancellationToken);
+                return await GetAll().Where(x => x.Subreddit.Id == "global").ToListAsync();
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }

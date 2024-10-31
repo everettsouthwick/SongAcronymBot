@@ -26,7 +26,7 @@ else
 }
 
 services.AddDbContext<SongAcronymBotContext>(options =>
-    options.UseSqlServer(debug ? config.GetConnectionString("Local") : config.GetConnectionString("Production"))
+    options.UseSqlServer(debug ? config.GetConnectionString("Production") : config.GetConnectionString("Production"))
 );
 
 services.AddTransient<IAcronymRepository, AcronymRepository>();

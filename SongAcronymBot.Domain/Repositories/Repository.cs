@@ -1,26 +1,38 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SongAcronymBot.Domain.Data;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace SongAcronymBot.Domain.Repositories
 {
     public interface IRepository<TEntity>
     {
         IQueryable<TEntity> GetAll();
-        Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken = default);
-        Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
-        Task<TEntity> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default);
+
+        Task<TEntity> AddAsync(TEntity entity);
+
+        Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities);
+
+        Task<TEntity> UpdateAsync(TEntity entity);
     }
 
-    public class Repository<TEntity>(SongAcronymBotContext context) : IRepository<TEntity> where TEntity : class, new()
+    public class Repository<TEntity> : IRepository<TEntity> where TEntity : class, new()
     {
-        protected readonly SongAcronymBotContext _context = context;
-        private readonly AsyncLock _asyncLock = new();
+        private readonly SongAcronymBotContext _context;
+
+        public Repository(SongAcronymBotContext context)
+        {
+            _context = context;
+        }
 
         public IQueryable<TEntity> GetAll()
         {
             try
             {
-                return _context.Set<TEntity>().AsNoTracking();
+                return _context.Set<TEntity>();
             }
             catch (Exception ex)
             {
@@ -28,85 +40,64 @@ namespace SongAcronymBot.Domain.Repositories
             }
         }
 
-        public async Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken = default)
+        public async Task<TEntity> AddAsync(TEntity entity)
         {
-            ArgumentNullException.ThrowIfNull(entity);
+            if (entity == null)
+            {
+                throw new ArgumentNullException($"{nameof(AddAsync)} entity must not be null");
+            }
 
             try
             {
-                using (await _asyncLock.LockAsync(cancellationToken))
-                {
-                    await _context.AddAsync(entity, cancellationToken);
-                    await _context.SaveChangesAsync(cancellationToken);
-                    return entity;
-                }
+                await _context.AddAsync(entity);
+                await _context.SaveChangesAsync();
+
+                return entity;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"{nameof(entity)} could not be saved: {ex.Message}");
             }
         }
 
-        public async Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities)
         {
-            ArgumentNullException.ThrowIfNull(entities);
+            if (entities == null)
+            {
+                throw new ArgumentNullException($"{nameof(AddRangeAsync)} entities must not be null");
+            }
 
             try
             {
-                using (await _asyncLock.LockAsync(cancellationToken))
-                {
-                    await _context.AddRangeAsync(entities, cancellationToken);
-                    await _context.SaveChangesAsync(cancellationToken);
-                    return entities;
-                }
+                await _context.AddRangeAsync(entities);
+                await _context.SaveChangesAsync();
+
+                return entities;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"{nameof(entities)} could not be saved: {ex.Message}");
             }
         }
 
-        public async Task<TEntity> UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
+        public async Task<TEntity> UpdateAsync(TEntity entity)
         {
-            ArgumentNullException.ThrowIfNull(entity);
+            if (entity == null)
+            {
+                throw new ArgumentNullException($"{nameof(UpdateAsync)} entity must not be null");
+            }
 
             try
             {
-                using (await _asyncLock.LockAsync(cancellationToken))
-                {
-                    _context.Update(entity);
-                    await _context.SaveChangesAsync(cancellationToken);
-                    return entity;
-                }
+                _context.Update(entity);
+                await _context.SaveChangesAsync();
+
+                return entity;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"{nameof(entity)} could not be updated: {ex.Message}");
             }
-        }
-    }
-
-    public sealed class AsyncLock
-    {
-        private readonly SemaphoreSlim _semaphore = new(1, 1);
-        private readonly Task<IDisposable> _releaser;
-
-        public AsyncLock()
-        {
-            _releaser = Task.FromResult((IDisposable)new Releaser(this));
-        }
-
-        public async Task<IDisposable> LockAsync(CancellationToken cancellationToken = default)
-        {
-            await _semaphore.WaitAsync(cancellationToken);
-            return await _releaser;
-        }
-
-        private sealed class Releaser : IDisposable
-        {
-            private readonly AsyncLock _toRelease;
-            internal Releaser(AsyncLock toRelease) { _toRelease = toRelease; }
-            public void Dispose() => _toRelease._semaphore.Release();
         }
     }
 }
