@@ -18,7 +18,7 @@ namespace SongAcronymBot.Functions
         private readonly ILogger<DailySpotifySync> _logger = logger;
 
         [Function("DailySpotifySync")]
-        public async Task Run([TimerTrigger("*/30 * * * * *")] TimerInfo myTimer, ILogger log)
+        public async Task Run([TimerTrigger("0 0 */4 * * *")] TimerInfo myTimer, ILogger log)
         {
             var artists = new List<(string SpotifyUrl, string SubredditIdOrIds)>
             {
@@ -42,13 +42,13 @@ namespace SongAcronymBot.Functions
                 ("https://open.spotify.com/artist/5INjqkS1o8h1imAzPqGZBb?si=1ce9423c249642cf", "2t1l9"),
                 ("https://open.spotify.com/artist/4V8LLVI7PbaPR0K2TGSxFF?si=fbd69ca4842f4333", "2vez1"),
                 ("https://open.spotify.com/artist/15UsOTVnJzReFVN1VCnxy4?si=782e819009634d1b", "3ecrg"),
-                ("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "2rlwe,2wqat,3jka9,mnhlw,s5e9b,yfeq1"),
+                ("https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02?si=25ab4e8c63254238", "2rlwe,2wqat,3jka9,mnhlw,s5e9b,yfeq1,abwxoe,9yjxwy,9l97y9"),
                 ("https://open.spotify.com/artist/0k17h0D3J5VfsdmQ1iZtE9?si=a451570b707e47ce", "2qhwe"),
                 ("https://open.spotify.com/artist/6olE6TJLqED3rqDCT0FyPh?si=b86c7b1ca03145c1", "2qman"),
                 ("https://open.spotify.com/artist/4gzpq5DPGxSnKTe4SA8HAU?si=d72c2c3dac804474", "2qmkl"),
                 ("https://open.spotify.com/artist/5YGY8feqx7naU7z4HrwZM6?si=478a953a70b44533", "2qnzf"),
                 ("https://open.spotify.com/artist/20JZFwl6HVl6yg8a4H3ZqK?si=9e0b247d9e264924", "2qt6r"),
-                ("https://open.spotify.com/artist/3WrFJ7ztbogyGnTHbHJFl2?si=8f86e07fa9bd4b85", "2qt7l"),
+                ("https://open.spotify.com/artist/3WrFJ7ztbogyGnTHbHJFl2?si=8f86e07fa9bd4b85", "2qt7l,2s75d"),
                 ("https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi?si=6d97d3b8c7434e17", "2qtn5"),
                 ("https://open.spotify.com/artist/2ye2Wgw4gimLv2eAKyk1NB?si=8eca5aef1f7e4876", "2qwwr"),
                 ("https://open.spotify.com/artist/3fMbdgg4jU18AjLCKBhRSm?si=39f98b8bc9ec439f", "2r12q"),
@@ -79,11 +79,37 @@ namespace SongAcronymBot.Functions
                 ("https://open.spotify.com/artist/246dkjvS1zLTtiykXe5h60?si=3fc4c9d518244f4b", "3acc3"),
                 ("https://open.spotify.com/artist/00FQb4jTyendYWaN8pK0wa?si=5b96ca75befe4253", "3fptd"),
                 ("https://open.spotify.com/artist/6qqNVTkY8uBg9cP3Jd7DAH?si=07867d049c764ff4", "3mqfo"),
-                ("https://open.spotify.com/artist/66CXWjxzNUsdJxJ2JdwvnR?si=d4158ebb46f548bf", "i8bq2"),
+                ("https://open.spotify.com/artist/66CXWjxzNUsdJxJ2JdwvnR?si=d4158ebb46f548bf", "i8bq2,2sk1i"),
                 ("https://open.spotify.com/artist/41MozSoPIsD1dJM0CLPjZF?si=7f468d9c997f4af4", "oswpw"),
                 ("https://open.spotify.com/artist/6jJ0s89eD6GaHleKKya26X?si=8cdc048adf6a43f8", "ulk6u"),
                 ("https://open.spotify.com/artist/5pKCCKE2ajJHZ9KAiaK11H?si=1008be5865164a2f", "um430"),
-                ("https://open.spotify.com/artist/181bsRPaVXVlUKXrxwZfHK?si=7a5721d8666e4c74", "yd81r")
+                ("https://open.spotify.com/artist/181bsRPaVXVlUKXrxwZfHK?si=7a5721d8666e4c74", "yd81r"),
+                ("https://open.spotify.com/artist/73sIBHcqh3Z3NyqHKZ7FOL?si=f3096fd634874e5b", "2scgk"),
+                ("https://open.spotify.com/artist/52zMTJCKluDlFwMQWmccY7?si=ysLZgDyHQhy85kg6vTfu9g", "3gopw"),
+                ("https://open.spotify.com/artist/2Waw2sSbqvAwK8NwACNjVo?si=f0d314b2e72743ee", "2smrh"),
+                ("https://open.spotify.com/artist/0fA0VVWsXO9YnASrzqfmYu?si=234c513c80654d0a", "2sex1"),
+                ("https://open.spotify.com/artist/6l3HvQ5sa6mXTsMTB19rO5?si=53368ae347014564", "2vdqu"),
+                ("https://open.spotify.com/artist/6XyY86QOPPrYVGvF9ch6wz?si=6e7e7ec7652d4ce8", "2s47y"),
+                ("https://open.spotify.com/artist/7GlBOeep6PqTfFi59PTUUN?si=4687c6af7c3d4d6b", "6d35ad"),
+                ("https://open.spotify.com/artist/7jy3rLJdDQY21OgRLCZ9sD?si=98ac391ce4ab4b8f", "2sav4"),
+                ("https://open.spotify.com/artist/0epOFNiUfyON9EYx7Tpr6V?si=5ebeda7b70984cdb", "2sho1"),
+                ("https://open.spotify.com/artist/50co4Is1HCEo8bhOyUWKpn?si=13b4bb0b37a64121", "31v06"),
+                ("https://open.spotify.com/artist/3mIj9lX2MWuHmhNCA7LSCW?si=aec19cb368eb4b22", "2x80q"),
+                ("https://open.spotify.com/artist/36QJpDe2go2KgaRleHCDTp?si=5ed43e50f55d4eae", "2qtjg"),
+                ("https://open.spotify.com/artist/74KM79TiuVKeVCqs8QtB0B?si=990960eadd754657", "bd3425,2v717"),
+                ("https://open.spotify.com/artist/3jOstUTkEu2JkjvRdBA5Gu?si=819c1846e6754d0c", "2s48r"),
+                ("https://open.spotify.com/artist/3o2dn2O0FCVsWDFSh8qxgG?si=ddeaf241b6d84699", "2upwb"),
+                ("https://open.spotify.com/artist/0X380XXQSNBYuleKzav5UO?si=eead38f6bc10490f", "2qhwq"),
+                ("https://open.spotify.com/artist/5eAWCfyUhZtHHtBdNk56l1?si=17c55fa815dc4fb9", "2so35"),
+                ("https://open.spotify.com/artist/6eUKZXaKkcviH0Ku9w2n3V?si=39af671eb76a41bc", "2ty7u"),
+                ("https://open.spotify.com/artist/63yrD80RY3RNEM2YDpUpO8?si=ff42663cc499434b", "2vuqt"),
+                ("https://open.spotify.com/artist/2FXC3k01G6Gw61bmprjgqS?si=23241949c37345e2", "2ys0x"),
+                ("https://open.spotify.com/artist/12Chz98pHFMPJEknJQMWvI?si=33446185e03e4ff6", "2qz0k"),
+                ("https://open.spotify.com/artist/0hEurMDQu99nJRq8pTxO14?si=acba51e999e547c5", "2s156"),
+                ("https://open.spotify.com/artist/6mdiAmATAx73kdxrNrnlao?si=7a7ff682b90a4007", "2rinz"),
+                ("https://open.spotify.com/artist/1r1uxoy19fzMxunt3ONAkG?si=1b28e777e0824fd5", "3ok7r"),
+                ("https://open.spotify.com/artist/74ASZWbe4lXaubB36ztrGX?si=42a10efb158643d5", "2qi0m"),
+                ("https://open.spotify.com/artist/1RyvyyTE3xzB2ZywiAwp0i?si=1f16a120f84f48f1", "2qhux")
             };
 
             using var scope = _serviceProvider.CreateScope();
@@ -94,7 +120,7 @@ namespace SongAcronymBot.Functions
             var spotifyService = scopedProvider.GetRequiredService<ISpotifyService>();
 
             var acronyms = new List<Acronym>();
-            var randomizedArtists = artists.OrderBy(x => Random.Shared.Next()).ToList();
+            var randomizedArtists = artists.OrderBy(x => Random.Shared.Next()).Take(5).ToList();
             foreach (var (spotifyUrl, subredditIdOrIds) in randomizedArtists)
             {
                 var subredditIds = subredditIdOrIds.Split(',').ToList();
