@@ -93,11 +93,9 @@ namespace SongAcronymBot.Functions
             var subredditRepository = scopedProvider.GetRequiredService<ISubredditRepository>();
             var spotifyService = scopedProvider.GetRequiredService<ISpotifyService>();
 
-            var random = new Random();
-            var shuffledArtists = artists.OrderBy(x => random.Next()).ToList();
             var acronyms = new List<Acronym>();
-
-            foreach (var (spotifyUrl, subredditIdOrIds) in shuffledArtists)
+            var randomizedArtists = artists.OrderBy(x => Random.Shared.Next()).ToList();
+            foreach (var (spotifyUrl, subredditIdOrIds) in randomizedArtists)
             {
                 var subredditIds = subredditIdOrIds.Split(',').ToList();
                 if (subredditIds.Count == 1)
@@ -109,9 +107,9 @@ namespace SongAcronymBot.Functions
                     acronyms.AddRange(await AddAcronymsToDatabaseAsync(spotifyUrl, subredditIds, acronymRepository, subredditRepository, spotifyService));
                 }
 
-                if (shuffledArtists.Last() != (spotifyUrl, subredditIdOrIds))
+                if (randomizedArtists.Last() != (spotifyUrl, subredditIdOrIds))
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(15));
+                    await Task.Delay(TimeSpan.FromSeconds(30));
                 }
             }
 
@@ -125,6 +123,7 @@ namespace SongAcronymBot.Functions
         private static async Task<List<Acronym>> AddAcronymsToDatabaseAsync(string spotifyUrl, string subredditId, IAcronymRepository acronymRepository, ISpotifyService spotifyService)
         {
             var acronyms = await spotifyService.GetAcronymsFromSpotifyArtistAsync(BuildRequest(spotifyUrl, subredditId));
+
             await acronymRepository.AddRangeAsync(acronyms);
             return acronyms;
         }

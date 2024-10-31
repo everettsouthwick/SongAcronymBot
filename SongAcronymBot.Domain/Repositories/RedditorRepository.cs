@@ -1,64 +1,60 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SongAcronymBot.Domain.Data;
 using SongAcronymBot.Domain.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace SongAcronymBot.Domain.Repositories
 {
     public interface IRedditorRepository : IRepository<Redditor>
     {
-        Task<Redditor?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
-        Task<Redditor?> GetByNameAsync(string username, CancellationToken cancellationToken = default);
-        Task<List<Redditor>> GetAllDisabled(CancellationToken cancellationToken = default);
+        Task<Redditor>? GetByIdAsync(string id);
+
+        Task<Redditor>? GetByNameAsync(string username);
+
+        Task<List<Redditor>> GetAllDisabled();
     }
 
-    public class RedditorRepository(SongAcronymBotContext context) : Repository<Redditor>(context), IRedditorRepository
+    public class RedditorRepository : Repository<Redditor>, IRedditorRepository
     {
-        private readonly AsyncLock _asyncLock = new();
+        public RedditorRepository(SongAcronymBotContext context) : base(context)
+        {
+        }
 
-        public async Task<Redditor?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+        public async Task<Redditor>? GetByIdAsync(string id)
         {
             try
             {
-                using (await _asyncLock.LockAsync(cancellationToken))
-                {
-                    return await GetAll()
-                        .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
-                }
+                return await GetAll().SingleOrDefaultAsync(x => x.Id == id);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<Redditor?> GetByNameAsync(string username, CancellationToken cancellationToken = default)
+        public async Task<Redditor>? GetByNameAsync(string username)
         {
             try
             {
-                using (await _asyncLock.LockAsync(cancellationToken))
-                {
-                    return await GetAll()
-                        .SingleOrDefaultAsync(x => x.Username == username, cancellationToken);
-                }
+                return await GetAll().SingleOrDefaultAsync(x => x.Username == username);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entity: {ex.Message}");
             }
         }
 
-        public async Task<List<Redditor>> GetAllDisabled(CancellationToken cancellationToken = default)
+        public async Task<List<Redditor>> GetAllDisabled()
         {
             try
             {
-                using (await _asyncLock.LockAsync(cancellationToken))
-                {
-                    return await GetAll()
-                        .Where(x => !x.Enabled)
-                        .ToListAsync(cancellationToken);
-                }
+                return await GetAll().Where(x => !x.Enabled).ToListAsync();
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 throw new Exception($"Couldn't retrieve entities: {ex.Message}");
             }
