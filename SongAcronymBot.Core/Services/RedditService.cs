@@ -37,6 +37,8 @@ namespace SongAcronymBot.Core.Services
         private readonly Dictionary<string, DateTime> LastSubredditAcronymsUpdate = [];
         private readonly TimeSpan SubredditAcronymsCacheTimeout = TimeSpan.FromHours(6);
 
+        private System.Timers.Timer _commentCheckTimer = null!;
+
         public async Task StartAsync(RedditClient reddit, bool debug = false)
         {
             ArgumentNullException.ThrowIfNull(reddit);
@@ -62,6 +64,11 @@ namespace SongAcronymBot.Core.Services
                 reddit.Account.Me.GetCommentHistory();
                 reddit.Account.Me.MonitorCommentHistory();
                 reddit.Account.Me.CommentHistoryUpdated += Me_CommentHistoryUpdated;
+                // Set up timer to check comments every 10 minutes
+                await CheckRecentComments();
+                _commentCheckTimer = new System.Timers.Timer(TimeSpan.FromHours(1).TotalMilliseconds);
+                _commentCheckTimer.Elapsed += async (s, e) => await CheckRecentComments();
+                _commentCheckTimer.Start();
 
                 // Monitor all tracked subreddits for potential matches
                 var subredditString = string.Join("+", reddit.Account.Me.Multis()
@@ -80,6 +87,62 @@ namespace SongAcronymBot.Core.Services
                     Console.WriteLine($"DEBUG :: Failed to start Reddit service - {ex.Message}");
                 }
                 throw;
+            }
+        }
+
+        private async Task CheckRecentComments()
+        {
+            try
+            {
+                var comments = Reddit.Account.Me.GetCommentHistory(limit: 50);
+                var recentComments = comments.Where(c => (DateTimeOffset.UtcNow - c.Created).TotalDays <= 1);
+
+                foreach (var comment in recentComments)
+                {
+                    if (comment.Score >= 8 && !comment.Body.Contains("Seren"))
+                    {
+                        try
+                        {
+                            var random = new Random();
+                            var serenTexts = new[]
+                            {
+                                "^Powered ^by ^Seren ^AI ",
+                                "^Guided ^by ^Seren ^AI ",
+                                "^Using ^Seren ^AI ",
+                                "^Featuring ^Seren ^AI ",
+                                "^Made ^better ^by ^Seren ^AI ",
+                                "^Elevated ^by ^Seren ^AI ",
+                                "^Optimized ^by ^Seren ^AI ",
+                                "^Improved ^by ^Seren ^AI ",
+                                "^Enhanced ^by ^Seren ^AI ",
+                                "^Empowered ^by ^Seren ^AI ",
+                            };
+
+                            var serenText = serenTexts[random.Next(serenTexts.Length)];
+                            var newBody = $"{comment.Body}\n\n[{serenText}](https://www.getseren.com/?utm_source=reddit&utm_medium=comment&utm_campaign=songacronymbot)";
+                            await comment.EditAsync(newBody);
+
+                            if (Debug)
+                            {
+                                Console.WriteLine($"DEBUG :: Added Seren disclaimer to comment {comment.Id}");
+                            }
+                        }
+                        catch (RedditForbiddenException ex)
+                        {
+                            if (Debug)
+                            {
+                                Console.WriteLine($"DEBUG :: Failed to edit comment - {ex.Message}");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (Debug)
+                {
+                    Console.WriteLine($"DEBUG :: Failed to check recent comments - {ex.Message}");
+                }
             }
         }
 
@@ -639,7 +702,6 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (var comment in comments)
             {
-                Console.WriteLine($"DEBUG :: Comment history activity: {comment.Id} - {comment.Score}");
                 if (comment.Score <= 0)
                 {
                     try
@@ -651,45 +713,6 @@ namespace SongAcronymBot.Core.Services
                         if (Debug)
                         {
                             Console.WriteLine($"DEBUG :: Failed to delete comment - {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    var commentAge = DateTimeOffset.UtcNow - comment.Created;
-                    if (commentAge.TotalDays <= 1 && comment.Score >= 3)
-                    {
-                        var body = comment.Body;
-                        if (!body.Contains("Seren"))
-                        {
-                            try
-                            {
-                                var random = new Random();
-                                var serenTexts = new[]
-                                {
-                                    "^Powered ^by ^Seren ^AI ",
-                                    "^Guided ^by ^Seren ^AI ",
-                                    "^Using ^Seren ^AI ",
-                                    "^Featuring ^Seren ^AI ",
-                                    "^Made ^better ^by ^Seren ^AI ",
-                                    "^Elevated ^by ^Seren ^AI ",
-                                    "^Optimized ^by ^Seren ^AI ",
-                                    "^Improved ^by ^Seren ^AI ",
-                                    "^Enhanced ^by ^Seren ^AI ",
-                                    "^Empowered ^by ^Seren ^AI ",
-                                };
-
-                                var serenText = serenTexts[random.Next(serenTexts.Length)];
-                                var newBody = $"{body}\n\n[{serenText}](https://www.getseren.com/?utm_source=reddit&utm_medium=comment&utm_campaign=songacronymbot)";
-                                await comment.EditAsync(newBody);
-                            }
-                            catch (RedditForbiddenException ex)
-                            {
-                                if (Debug)
-                                {
-                                    Console.WriteLine($"DEBUG :: Failed to edit comment - {ex.Message}");
-                                }
-                            }
                         }
                     }
                 }
