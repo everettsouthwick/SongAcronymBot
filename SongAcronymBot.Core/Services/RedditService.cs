@@ -64,7 +64,7 @@ namespace SongAcronymBot.Core.Services
                 reddit.Account.Me.GetCommentHistory();
                 reddit.Account.Me.MonitorCommentHistory();
                 reddit.Account.Me.CommentHistoryUpdated += Me_CommentHistoryUpdated;
-                // Set up timer to check comments every 10 minutes
+                // Set up timer to check comments every 1 hour
                 await CheckRecentComments();
                 _commentCheckTimer = new System.Timers.Timer(TimeSpan.FromHours(1).TotalMilliseconds);
                 _commentCheckTimer.Elapsed += async (s, e) => await CheckRecentComments();
