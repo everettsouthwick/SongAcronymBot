@@ -27,11 +27,13 @@ namespace SongAcronymBot.Core.Services
 
         // Cache for global acronyms
         private volatile List<Acronym> GlobalAcronymsCache = null!;
+
         private DateTime LastGlobalAcronymsUpdate = DateTime.MinValue;
         private readonly TimeSpan GlobalAcronymsCacheTimeout = TimeSpan.FromHours(6);
 
         // Cache for subreddit acronyms
         private readonly Dictionary<string, List<Acronym>> SubredditAcronymsCache = [];
+
         private readonly Dictionary<string, DateTime> LastSubredditAcronymsUpdate = [];
         private readonly TimeSpan SubredditAcronymsCacheTimeout = TimeSpan.FromHours(6);
 
@@ -665,20 +667,20 @@ namespace SongAcronymBot.Core.Services
                                 var random = new Random();
                                 var serenTexts = new[]
                                 {
-                                    "Powered by Seren AI",
-                                    "Guided by Seren AI",
-                                    "Using Seren AI",
-                                    "Featuring Seren AI",
-                                    "Made better by Seren AI",
-                                    "Elevated by Seren AI",
-                                    "Optimized by Seren AI",
-                                    "Improved by Seren AI",
-                                    "Enhanced by Seren AI",
-                                    "Empowered by Seren AI",
+                                    "^Powered ^by ^Seren ^AI ",
+                                    "^Guided ^by ^Seren ^AI ",
+                                    "^Using ^Seren ^AI ",
+                                    "^Featuring ^Seren ^AI ",
+                                    "^Made ^better ^by ^Seren ^AI ",
+                                    "^Elevated ^by ^Seren ^AI ",
+                                    "^Optimized ^by ^Seren ^AI ",
+                                    "^Improved ^by ^Seren ^AI ",
+                                    "^Enhanced ^by ^Seren ^AI ",
+                                    "^Empowered ^by ^Seren ^AI ",
                                 };
 
                                 var serenText = serenTexts[random.Next(serenTexts.Length)];
-                                var newBody = $"{body}\n---\n\n[{serenText}](https://www.getseren.com/?utm_source=reddit&utm_medium=comment&utm_campaign=songacronymbot)";
+                                var newBody = $"{body}\n\n[{serenText}](https://www.getseren.com/?utm_source=reddit&utm_medium=comment&utm_campaign=songacronymbot)";
                                 await comment.EditAsync(newBody);
                             }
                             catch (RedditForbiddenException ex)
@@ -726,5 +728,6 @@ namespace SongAcronymBot.Core.Services
             return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
         }
     }
+
     #endregion Shared Functionality
 }
