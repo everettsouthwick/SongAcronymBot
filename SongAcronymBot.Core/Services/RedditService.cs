@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Reddit;
+﻿using Reddit;
 using Reddit.Controllers;
 using Reddit.Controllers.EventArgs;
 using Reddit.Exceptions;
@@ -16,16 +15,25 @@ namespace SongAcronymBot.Core.Services
         Task StartAsync(RedditClient reddit, bool debug = false);
     }
 
-    public class RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISubredditRepository subredditRepository, ISpotifyService spotifyService) : IRedditService
+    public class RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISpotifyService spotifyService) : IRedditService
     {
         private readonly IAcronymRepository _acronymRepository = acronymRepository ?? throw new ArgumentNullException(nameof(acronymRepository));
         private readonly IRedditorRepository _redditorRepository = redditorRepository ?? throw new ArgumentNullException(nameof(redditorRepository));
-        private readonly ISubredditRepository _subredditRepository = subredditRepository ?? throw new ArgumentNullException(nameof(subredditRepository));
         private readonly ISpotifyService _spotifyService = spotifyService ?? throw new ArgumentNullException(nameof(spotifyService));
 
         private RedditClient Reddit = null!;
         private volatile List<Redditor> DisabledRedditors = null!; // Made volatile for thread safety
         private volatile bool Debug;
+
+        // Cache for global acronyms
+        private volatile List<Acronym> GlobalAcronymsCache = null!;
+        private DateTime LastGlobalAcronymsUpdate = DateTime.MinValue;
+        private readonly TimeSpan GlobalAcronymsCacheTimeout = TimeSpan.FromHours(6);
+
+        // Cache for subreddit acronyms
+        private readonly Dictionary<string, List<Acronym>> SubredditAcronymsCache = [];
+        private readonly Dictionary<string, DateTime> LastSubredditAcronymsUpdate = [];
+        private readonly TimeSpan SubredditAcronymsCacheTimeout = TimeSpan.FromHours(6);
 
         public async Task StartAsync(RedditClient reddit, bool debug = false)
         {
@@ -34,6 +42,14 @@ namespace SongAcronymBot.Core.Services
             Reddit = reddit;
             DisabledRedditors = await _redditorRepository.GetAllDisabled();
             Debug = debug;
+
+            // Initialize global acronyms cache
+            if (Debug)
+            {
+                Console.WriteLine("DEBUG :: Initializing global acronyms cache");
+            }
+            GlobalAcronymsCache = await _acronymRepository.GetAllGlobalAcronyms();
+            LastGlobalAcronymsUpdate = DateTime.UtcNow;
 
             try
             {
@@ -427,8 +443,50 @@ namespace SongAcronymBot.Core.Services
         {
             var matches = new List<AcronymMatch>();
 
-            var acronyms = await _acronymRepository.GetAllGlobalAcronyms();
-            acronyms.AddRange(await _acronymRepository.GetAllBySubredditNameAsync(comment.Subreddit.ToLower()));
+            // Check if global acronyms cache needs refresh
+            if (DateTime.UtcNow - LastGlobalAcronymsUpdate > GlobalAcronymsCacheTimeout)
+            {
+                if (Debug)
+                {
+                    Console.WriteLine("DEBUG :: Refreshing global acronyms cache");
+                }
+                try
+                {
+                    GlobalAcronymsCache = await _acronymRepository.GetAllGlobalAcronyms();
+                    LastGlobalAcronymsUpdate = DateTime.UtcNow;
+                }
+                catch
+                {
+                    // Continue silently if cache update fails
+                }
+            }
+
+            var acronyms = new List<Acronym>(GlobalAcronymsCache);
+
+            // Check if subreddit acronyms cache needs refresh
+            var subredditName = comment.Subreddit.ToLower();
+            if (!SubredditAcronymsCache.TryGetValue(subredditName, out List<Acronym>? value) ||
+                DateTime.UtcNow - LastSubredditAcronymsUpdate[subredditName] > SubredditAcronymsCacheTimeout)
+            {
+                if (Debug)
+                {
+                    Console.WriteLine($"DEBUG :: Refreshing subreddit acronyms cache for {subredditName}");
+                }
+
+                try
+                {
+                    value = await _acronymRepository.GetAllBySubredditNameAsync(subredditName);
+                    SubredditAcronymsCache[subredditName] = value;
+                    LastSubredditAcronymsUpdate[subredditName] = DateTime.UtcNow;
+                }
+                catch
+                {
+                    // Continue silently if cache update fails
+                    value = new List<Acronym>();
+                }
+            }
+
+            acronyms.AddRange(value);
 
             foreach (var acronym in acronyms)
             {
@@ -579,6 +637,7 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (var comment in comments)
             {
+                Console.WriteLine($"DEBUG :: Comment history activity: {comment.Id} - {comment.Score}");
                 if (comment.Score <= 0)
                 {
                     try
@@ -593,10 +652,50 @@ namespace SongAcronymBot.Core.Services
                         }
                     }
                 }
+                else
+                {
+                    var commentAge = DateTimeOffset.UtcNow - comment.Created;
+                    if (commentAge.TotalDays <= 1 && comment.Score >= 3)
+                    {
+                        var body = comment.Body;
+                        if (!body.Contains("Seren"))
+                        {
+                            try
+                            {
+                                var random = new Random();
+                                var serenTexts = new[]
+                                {
+                                    "Powered by Seren AI",
+                                    "Guided by Seren AI",
+                                    "Using Seren AI",
+                                    "Featuring Seren AI",
+                                    "Made better by Seren AI",
+                                    "Elevated by Seren AI",
+                                    "Optimized by Seren AI",
+                                    "Improved by Seren AI",
+                                    "Enhanced by Seren AI",
+                                    "Empowered by Seren AI",
+                                };
+
+                                var serenText = serenTexts[random.Next(serenTexts.Length)];
+                                var newBody = $"{body}\n---\n\n[{serenText}](https://www.getseren.com/?utm_source=reddit&utm_medium=comment&utm_campaign=songacronymbot)";
+                                await comment.EditAsync(newBody);
+                            }
+                            catch (RedditForbiddenException ex)
+                            {
+                                if (Debug)
+                                {
+                                    Console.WriteLine($"DEBUG :: Failed to edit comment - {ex.Message}");
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
         #endregion Process Comment Updates
+
         #region Shared Functionality
 
         private async Task<Redditor> AddOrUpdateRedditor(string id, string username, bool enabled)
@@ -624,86 +723,8 @@ namespace SongAcronymBot.Core.Services
 
         private static string FormatReplyBodyWithFooter(string body, string author)
         {
-            var random = new Random();
-            var showSeren = random.NextDouble() <= 0.02;
-
-            var serenTexts = new[]
-            {
-                "Powered by Seren AI",
-                "Powered by Seren Ai",
-                "Powered with Seren AI",
-                "Powered with Seren Ai",
-                "Guided by Seren AI",
-                "Guided by Seren Ai",
-                "Guided with Seren AI",
-                "Guided with Seren Ai",
-                "Using Seren AI",
-                "Using Seren Ai",
-                "Featuring Seren AI",
-                "Featuring Seren Ai",
-                "Made better by Seren AI",
-                "Made better by Seren Ai",
-                "Made better with Seren AI",
-                "Made better with Seren Ai",
-                "Augmented by Seren AI",
-                "Augmented by Seren Ai",
-                "Augmented with Seren AI",
-                "Augmented with Seren Ai",
-                "Elevated by Seren AI",
-                "Elevated by Seren Ai",
-                "Elevated with Seren AI",
-                "Elevated with Seren Ai",
-                "Optimized by Seren AI",
-                "Optimized by Seren Ai",
-                "Optimized with Seren AI",
-                "Optimized with Seren Ai",
-                "Improved by Seren AI",
-                "Improved by Seren Ai",
-                "Improved with Seren AI",
-                "Improved with Seren Ai",
-                "Enhanced by Seren AI",
-                "Enhanced by Seren Ai",
-                "Enhanced with Seren AI",
-                "Enhanced with Seren Ai",
-                "Assisted by Seren AI",
-                "Assisted by Seren Ai",
-                "Assisted with Seren AI",
-                "Assisted with Seren Ai",
-                "Empowered by Seren AI",
-                "Empowered by Seren Ai",
-                "Empowered with Seren AI",
-                "Empowered with Seren Ai",
-                "Supported by Seren AI",
-                "Supported by Seren Ai",
-                "Supported with Seren AI",
-                "Supported with Seren Ai",
-                "Driven by Seren AI",
-                "Driven by Seren Ai",
-                "Driven with Seren AI",
-                "Driven with Seren Ai",
-                "Accelerated by Seren AI",
-                "Accelerated by Seren Ai",
-                "Accelerated with Seren AI",
-                "Accelerated with Seren Ai",
-                "Strengthened by Seren AI",
-                "Strengthened by Seren Ai",
-                "Strengthened with Seren AI",
-                "Strengthened with Seren Ai",
-                "Amplified by Seren AI",
-                "Amplified by Seren Ai",
-                "Amplified with Seren AI",
-                "Amplified with Seren Ai"
-            };
-
-            var serenText = serenTexts[random.Next(serenTexts.Length)];
-
-            var footer = showSeren
-                ? $"[{serenText}](https://www.getseren.com/?utm_source=reddit&utm_medium=comment&utm_campaign=songacronymbot) | ^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)"
-                : $"^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
-
-            return $"{body}\n---\n\n{footer}";
+            return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
         }
-
-        #endregion Shared Functionality
     }
+    #endregion Shared Functionality
 }
