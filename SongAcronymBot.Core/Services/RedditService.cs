@@ -99,7 +99,7 @@ namespace SongAcronymBot.Core.Services
 
                 foreach (var comment in recentComments)
                 {
-                    if (comment.Score >= 8 && !comment.Body.Contains("Seren"))
+                    if (comment.Score >= 10 && !comment.Body.Contains("Seren"))
                     {
                         try
                         {
@@ -108,14 +108,6 @@ namespace SongAcronymBot.Core.Services
                             {
                                 "^Powered ^by ^Seren ^AI ",
                                 "^Guided ^by ^Seren ^AI ",
-                                "^Using ^Seren ^AI ",
-                                "^Featuring ^Seren ^AI ",
-                                "^Made ^better ^by ^Seren ^AI ",
-                                "^Elevated ^by ^Seren ^AI ",
-                                "^Optimized ^by ^Seren ^AI ",
-                                "^Improved ^by ^Seren ^AI ",
-                                "^Enhanced ^by ^Seren ^AI ",
-                                "^Empowered ^by ^Seren ^AI ",
                             };
 
                             var serenText = serenTexts[random.Next(serenTexts.Length)];
