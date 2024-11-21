@@ -64,9 +64,9 @@ namespace SongAcronymBot.Core.Services
                 reddit.Account.Me.GetCommentHistory();
                 reddit.Account.Me.MonitorCommentHistory();
                 reddit.Account.Me.CommentHistoryUpdated += Me_CommentHistoryUpdated;
-                // Set up timer to check comments every 1 hour
+                // Set up timer to check comments every 15 minutes
                 await CheckRecentComments();
-                _commentCheckTimer = new System.Timers.Timer(TimeSpan.FromHours(1).TotalMilliseconds);
+                _commentCheckTimer = new System.Timers.Timer(TimeSpan.FromMinutes(15).TotalMilliseconds);
                 _commentCheckTimer.Elapsed += async (s, e) => await CheckRecentComments();
                 _commentCheckTimer.Start();
 
@@ -99,7 +99,7 @@ namespace SongAcronymBot.Core.Services
 
                 foreach (var comment in recentComments)
                 {
-                    if (comment.Score >= 10 && !comment.Body.Contains("Seren"))
+                    if (comment.Score >= 8 && !comment.Body.Contains("Seren"))
                     {
                         try
                         {
