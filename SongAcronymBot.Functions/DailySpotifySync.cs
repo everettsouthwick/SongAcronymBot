@@ -162,6 +162,7 @@ namespace SongAcronymBot.Functions
             foreach (var subredditId in subredditIds)
             {
                 var subreddit = await subredditRepository.GetByIdAsync(subredditId);
+                var globalSubreddit = await subredditRepository.GetByIdAsync("global");
                 foreach (var acronym in initialAcronyms)
                 {
                     var newAcronym = new Acronym
@@ -171,7 +172,7 @@ namespace SongAcronymBot.Functions
                         AlbumName = acronym.AlbumName,
                         ArtistName = acronym.ArtistName,
                         Enabled = acronym.Enabled,
-                        Subreddit = subreddit,
+                        Subreddit = subredditId == null || acronym.AcronymName.Length >= 5 ? globalSubreddit : subreddit,
                         TrackName = acronym.TrackName,
                         YearReleased = acronym.YearReleased
                     };
