@@ -35,7 +35,6 @@ namespace SongAcronymBot.Core.Test.Services
             return new RedditService(
                 mockAcronymRepository.Object,
                 mockRedditorRepository.Object,
-                mockSubredditRepository.Object,
                 mockSpotifyService.Object);
         }
 
