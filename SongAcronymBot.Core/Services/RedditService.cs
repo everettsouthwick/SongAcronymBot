@@ -99,7 +99,7 @@ namespace SongAcronymBot.Core.Services
 
                 foreach (var comment in recentComments)
                 {
-                    if (comment.Score >= 6 && !comment.Body.Contains("Seren"))
+                    if (comment.Score >= 999 && !comment.Body.Contains("Seren"))
                     {
                         try
                         {
