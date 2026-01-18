@@ -7,6 +7,11 @@ namespace SongAcronymBot.Core.Model
     {
         public string? Acronym { get; set; }
         public string? CommentBody { get; set; }
+        /// <summary>
+        /// The description portion of the match without the acronym prefix.
+        /// Used for consolidating multiple matches of the same acronym.
+        /// </summary>
+        public string? MatchDescription { get; set; }
         public int Position { get; set; }
 
         public AcronymMatch(EnrichedAcronym acronym, int index)
@@ -21,24 +26,42 @@ namespace SongAcronymBot.Core.Model
                 ? $"[{acronym.AlbumName}](https://www.myartistradar.com/artists/{acronym.ArtistSlug}/{acronym.AlbumSlug})"
                 : acronym.AlbumName;
 
+            string? matchDescription = null;
             string? commentBody = null;
 
             if (acronym.AcronymType == AcronymType.Track && IsTrackAndAlbumNameSimilar(acronym.TrackName, acronym.AlbumName))
             {
-                commentBody = $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\" (track) or *{albumLink}* (album) ({acronym.YearReleased}) by {artistLink}.\n";
+                matchDescription = $"\"{acronym.TrackName}\" (track) or *{albumLink}* (album) ({acronym.YearReleased}) by {artistLink}";
+                commentBody = $"- {acronym.AcronymText} could mean {matchDescription}.\n";
             }
 
-            if (commentBody == null)
+            if (matchDescription == null)
             {
-                commentBody = acronym.AcronymType switch
+                (matchDescription, commentBody) = acronym.AcronymType switch
                 {
-                    AcronymType.Album => $"- {acronym.AcronymText} could mean *{albumLink}* ({acronym.YearReleased}), an album by {artistLink}.\n",
-                    AcronymType.Artist => $"- {acronym.AcronymText} could mean {artistLink}.\n",
-                    AcronymType.Single => $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a single by {artistLink}.\n",
-                    AcronymType.Track => $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n",
-                    _ => $"- {acronym.AcronymText} could mean {acronym.TrackName}, a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n",
+                    AcronymType.Album => (
+                        $"*{albumLink}* ({acronym.YearReleased}), an album by {artistLink}",
+                        $"- {acronym.AcronymText} could mean *{albumLink}* ({acronym.YearReleased}), an album by {artistLink}.\n"
+                    ),
+                    AcronymType.Artist => (
+                        $"{artistLink}",
+                        $"- {acronym.AcronymText} could mean {artistLink}.\n"
+                    ),
+                    AcronymType.Single => (
+                        $"\"{acronym.TrackName}\", a single by {artistLink}",
+                        $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a single by {artistLink}.\n"
+                    ),
+                    AcronymType.Track => (
+                        $"\"{acronym.TrackName}\", a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}",
+                        $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n"
+                    ),
+                    _ => (
+                        $"{acronym.TrackName}, a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}",
+                        $"- {acronym.AcronymText} could mean {acronym.TrackName}, a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n"
+                    ),
                 };
             }
+            MatchDescription = matchDescription;
             CommentBody = commentBody;
             Position = index;
         }
@@ -46,6 +69,7 @@ namespace SongAcronymBot.Core.Model
         public AcronymMatch(string acronymName, int index)
         {
             Acronym = acronymName;
+            MatchDescription = $"not recognized. [Click here](https://www.reddit.com/r/songacronymbot/comments/qxsnga/new_acronym_suggestions/) to suggest this to be added";
             CommentBody = $"- {acronymName} was not recognized. [Click here](https://www.reddit.com/r/songacronymbot/comments/qxsnga/new_acronym_suggestions/) to suggest this to be added.\n";
             Position = index;
         }

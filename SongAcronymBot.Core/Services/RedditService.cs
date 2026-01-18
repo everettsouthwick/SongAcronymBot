@@ -15,13 +15,17 @@ namespace SongAcronymBot.Core.Services
         IMessageProcessor messageProcessor,
         ICommentProcessor commentProcessor,
         IOptOutManager optOutManager,
+        IPromotionalMessageFormatter promotionalMessageFormatter,
         IPromotionalMessageRepository promotionalMessageRepository,
+        ISubredditRepository subredditRepository,
         ILogger<RedditService> logger) : IRedditService
     {
         private readonly IMessageProcessor _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
         private readonly ICommentProcessor _commentProcessor = commentProcessor ?? throw new ArgumentNullException(nameof(commentProcessor));
         private readonly IOptOutManager _optOutManager = optOutManager ?? throw new ArgumentNullException(nameof(optOutManager));
+        private readonly IPromotionalMessageFormatter _promotionalMessageFormatter = promotionalMessageFormatter ?? throw new ArgumentNullException(nameof(promotionalMessageFormatter));
         private readonly IPromotionalMessageRepository _promotionalMessageRepository = promotionalMessageRepository ?? throw new ArgumentNullException(nameof(promotionalMessageRepository));
+        private readonly ISubredditRepository _subredditRepository = subredditRepository ?? throw new ArgumentNullException(nameof(subredditRepository));
         private readonly ILogger<RedditService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         private RedditClient _reddit = null!;
@@ -52,12 +56,16 @@ namespace SongAcronymBot.Core.Services
                 _commentCheckTimer.Elapsed += async (s, e) => await CheckRecentComments();
                 _commentCheckTimer.Start();
 
-                // Monitor all tracked subreddits for potential matches
-                var subredditNames = reddit.Account.Me.Multis()
-                    .Where(x => x.Name.StartsWith("tracked"))
-                    .SelectMany(x => x.Subreddits)
-                    .Select(s => s.Name)
-                    .ToList();
+                // Monitor all tracked subreddits from the database
+                var activeSubreddits = await _subredditRepository.GetActiveSubredditsAsync();
+                var subredditNames = activeSubreddits.Select(s => s.Name).ToList();
+
+                if (subredditNames.Count == 0)
+                {
+                    _logger.LogWarning("No active subreddits found in database");
+                    return;
+                }
+
                 var subredditString = string.Join("+", subredditNames);
                 var trackedSubreddits = reddit.Subreddit(subredditString);
 
@@ -114,9 +122,9 @@ namespace SongAcronymBot.Core.Services
                 {
                     try
                     {
-                        // Format the message text with ^ in front of each word for Reddit small text
-                        var formattedText = FormatAsSmallText(promoMessage.MessageText);
-                        var newBody = $"{comment.Body}\n\n[{formattedText}]({promoMessage.Url})";
+                        // Format the promotional message and append to comment
+                        var promoText = _promotionalMessageFormatter.FormatPromotionalMessage(promoMessage.MessageText, promoMessage.Url);
+                        var newBody = comment.Body + promoText;
                         await comment.EditAsync(newBody);
 
                         _logger.LogInformation("Added promotional message to comment {CommentId}", comment.Id);
@@ -134,16 +142,6 @@ namespace SongAcronymBot.Core.Services
             {
                 _logger.LogWarning(ex, "Failed to check recent comments for promotional messages");
             }
-        }
-
-        /// <summary>
-        /// Formats text with ^ prefix on each word for Reddit small/superscript text.
-        /// </summary>
-        private static string FormatAsSmallText(string text)
-        {
-            var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var formattedText = string.Join(" ", words.Select(w => $"^{w}"));
-            return formattedText + " ";
         }
 
         #region Event Handlers
