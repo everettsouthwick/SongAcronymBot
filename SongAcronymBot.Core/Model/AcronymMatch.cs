@@ -1,8 +1,9 @@
 ﻿using SongAcronymBot.Domain.Supabase.Models;
+using System.Text.RegularExpressions;
 
 namespace SongAcronymBot.Core.Model
 {
-    public class AcronymMatch
+    public partial class AcronymMatch
     {
         public string? Acronym { get; set; }
         public string? CommentBody { get; set; }
@@ -20,14 +21,25 @@ namespace SongAcronymBot.Core.Model
                 ? $"[{acronym.AlbumName}](https://www.myartistradar.com/artists/{acronym.ArtistSlug}/{acronym.AlbumSlug})"
                 : acronym.AlbumName;
 
-            CommentBody = acronym.AcronymType switch
+            string? commentBody = null;
+
+            if (acronym.AcronymType == AcronymType.Track && IsTrackAndAlbumNameSimilar(acronym.TrackName, acronym.AlbumName))
             {
-                AcronymType.Album => $"- {acronym.AcronymText} could mean *{albumLink}* ({acronym.YearReleased}), an album by {artistLink}.\n",
-                AcronymType.Artist => $"- {acronym.AcronymText} could mean {artistLink}.\n",
-                AcronymType.Single => $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a single by {artistLink}.\n",
-                AcronymType.Track => $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n",
-                _ => $"- {acronym.AcronymText} could mean {acronym.TrackName}, a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n",
-            };
+                commentBody = $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\" (track) or *{albumLink}* (album) ({acronym.YearReleased}) by {artistLink}.\n";
+            }
+
+            if (commentBody == null)
+            {
+                commentBody = acronym.AcronymType switch
+                {
+                    AcronymType.Album => $"- {acronym.AcronymText} could mean *{albumLink}* ({acronym.YearReleased}), an album by {artistLink}.\n",
+                    AcronymType.Artist => $"- {acronym.AcronymText} could mean {artistLink}.\n",
+                    AcronymType.Single => $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a single by {artistLink}.\n",
+                    AcronymType.Track => $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n",
+                    _ => $"- {acronym.AcronymText} could mean {acronym.TrackName}, a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n",
+                };
+            }
+            CommentBody = commentBody;
             Position = index;
         }
 
@@ -38,7 +50,7 @@ namespace SongAcronymBot.Core.Model
             Position = index;
         }
 
-        private static bool IsTrackAndAlbumNameSimilar(string trackName, string albumName)
+        private static bool IsTrackAndAlbumNameSimilar(string? trackName, string? albumName)
         {
             if (string.IsNullOrEmpty(trackName) || string.IsNullOrEmpty(albumName))
                 return false;
@@ -61,23 +73,27 @@ namespace SongAcronymBot.Core.Model
             if (string.IsNullOrEmpty(name))
                 return string.Empty;
 
-            // Remove common patterns that might appear in track names but not album names
             var normalized = name.Trim();
 
             // Remove featured artist information: (feat. Artist), (featuring Artist), (ft. Artist), etc.
-            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s*\(feat\.?\s+[^)]+\)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s*\(featuring\s+[^)]+\)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s*\(ft\.?\s+[^)]+\)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            normalized = FeatRegex().Replace(normalized, "");
 
-            // Remove other common track-specific suffixes
-            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s*\([^)]*remix[^)]*\)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s*\([^)]*version[^)]*\)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s*\([^)]*edit[^)]*\)", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            // Remove other common track-specific suffixes like (remix), (version), (edit) - broadly matching parens with these words
+            normalized = VersionRegex().Replace(normalized, "");
 
             // Remove extra whitespace
-            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ").Trim();
+            normalized = WhitespaceRegex().Replace(normalized, " ").Trim();
 
             return normalized;
         }
+
+        [GeneratedRegex(@"\s*\((feat|ft|featuring)\.?\s+[^)]+\)", RegexOptions.IgnoreCase, "en-US")]
+        private static partial Regex FeatRegex();
+
+        [GeneratedRegex(@"\s*\([^)]*(remix|version|edit)[^)]*\)", RegexOptions.IgnoreCase, "en-US")]
+        private static partial Regex VersionRegex();
+
+        [GeneratedRegex(@"\s+")]
+        private static partial Regex WhitespaceRegex();
     }
 }
