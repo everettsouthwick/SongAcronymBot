@@ -1,8 +1,8 @@
+using SongAcronymBot.Domain.Services;
 using SongAcronymBot.Domain.Supabase.Models;
-using SongAcronymBot.Domain.Supabase.Services;
 using static Supabase.Postgrest.Constants;
 
-namespace SongAcronymBot.Domain.Supabase.Repositories
+namespace SongAcronymBot.Domain.Repositories
 {
     public class TrackRepository(ISupabaseService supabaseService) : BaseRepository<Track>(supabaseService), ITrackRepository
     {

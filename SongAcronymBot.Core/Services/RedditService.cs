@@ -4,9 +4,9 @@ using Reddit.Controllers;
 using Reddit.Controllers.EventArgs;
 using Reddit.Exceptions;
 using SongAcronymBot.Core.Model;
+using SongAcronymBot.Domain.Repositories;
 using SongAcronymBot.Domain.Supabase.Models;
-using SongAcronymBot.Domain.Supabase.Repositories;
-using IOptedOutRedditorRepository = SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository;
+using IOptedOutRedditorRepository = SongAcronymBot.Domain.Repositories.IOptedOutRedditorRepository;
 using OptedOutRedditorModel = SongAcronymBot.Domain.Supabase.Models.OptedOutRedditor;
 
 namespace SongAcronymBot.Core.Services

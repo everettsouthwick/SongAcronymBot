@@ -1,6 +1,6 @@
 using Supabase.Postgrest.Models;
 
-namespace SongAcronymBot.Domain.Supabase.Repositories
+namespace SongAcronymBot.Domain.Repositories
 {
     /// <summary>
     /// Generic repository interface for CRUD operations on Supabase tables

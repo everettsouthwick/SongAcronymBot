@@ -1,6 +1,6 @@
 using SongAcronymBot.Domain.Supabase.Models;
 
-namespace SongAcronymBot.Domain.Supabase.Repositories
+namespace SongAcronymBot.Domain.Repositories
 {
     public interface ISubredditArtistRepository : IBaseRepository<SubredditArtist>
     {

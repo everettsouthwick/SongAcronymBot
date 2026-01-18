@@ -2,7 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Supabase;
 
-namespace SongAcronymBot.Domain.Supabase.Services
+namespace SongAcronymBot.Domain.Services
 {
     /// <summary>
     /// Implementation of the Supabase service

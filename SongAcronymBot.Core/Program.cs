@@ -3,8 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Reddit;
 using SongAcronymBot.Core.Services;
-using SongAcronymBot.Domain.Supabase.Repositories;
-using SongAcronymBot.Domain.Supabase.Services;
+using SongAcronymBot.Domain.Repositories;
+using SongAcronymBot.Domain.Services;
 
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -14,10 +14,7 @@ var config = new ConfigurationBuilder()
 
 var services = new ServiceCollection();
 
-// Register IConfiguration for services that need it
 services.AddSingleton<IConfiguration>(config);
-
-// Add logging from configuration
 services.AddLogging(builder =>
 {
     builder.AddConfiguration(config.GetSection("Logging"));

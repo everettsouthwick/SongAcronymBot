@@ -1,8 +1,8 @@
+using SongAcronymBot.Domain.Services;
 using SongAcronymBot.Domain.Supabase.Models;
-using SongAcronymBot.Domain.Supabase.Services;
 using static Supabase.Postgrest.Constants;
 
-namespace SongAcronymBot.Domain.Supabase.Repositories
+namespace SongAcronymBot.Domain.Repositories
 {
     public class SubredditArtistRepository(ISupabaseService supabaseService) : BaseRepository<SubredditArtist>(supabaseService), ISubredditArtistRepository
     {
