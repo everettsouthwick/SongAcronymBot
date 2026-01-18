@@ -11,7 +11,6 @@ namespace SongAcronymBot.Domain.Data
     public class SongAcronymBotContext(DbContextOptions<SongAcronymBotContext> options) : DbContext(options)
     {
         public DbSet<Acronym> Acronyms { get; set; }
-        public DbSet<Redditor> Redditors { get; set; }
         public DbSet<Subreddit> Subreddits { get; set; }
     }
 }

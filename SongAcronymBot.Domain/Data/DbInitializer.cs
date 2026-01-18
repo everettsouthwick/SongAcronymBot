@@ -50,19 +50,6 @@ namespace SongAcronymBot.Domain.Data
 
             context.Subreddits.AddRange(subreddits);
             context.SaveChanges();
-
-            var redditors = new List<Redditor>
-            {
-                new() {Id = "8dl49btj", Username = "samueel_", Enabled = false},
-                new() {Id = "fb7y2", Username = "spud_simon_salem", Enabled = false},
-                new() {Id = "7w8mw", Username = "CommanderWank", Enabled = false},
-            };
-
-            foreach (var redditor in redditors)
-            {
-                context.Redditors.Add(redditor);
-            }
-            context.SaveChanges();
         }
     }
 }

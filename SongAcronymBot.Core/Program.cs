@@ -1,11 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Reddit;
 using SongAcronymBot.Core.Services;
-using SongAcronymBot.Domain.Data;
-using SongAcronymBot.Domain.Repositories;
-using SongAcronymBot.Domain.Services;
+using SongAcronymBot.Domain.Supabase.Repositories;
+using SongAcronymBot.Domain.Supabase.Services;
 
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -15,34 +14,33 @@ var config = new ConfigurationBuilder()
 
 var services = new ServiceCollection();
 
-bool debug;
-if (bool.TryParse(config["Debug"], out bool debugValue))
-{
-    debug = debugValue;
-}
-else
-{
-    debug = false; // Default value if parsing fails
-}
+// Register IConfiguration for services that need it
+services.AddSingleton<IConfiguration>(config);
 
-services.AddDbContext<SongAcronymBotContext>(options =>
-    options.UseSqlServer(debug ? config.GetConnectionString("Production") : config.GetConnectionString("Production"))
-);
+// Add logging from configuration
+services.AddLogging(builder =>
+{
+    builder.AddConfiguration(config.GetSection("Logging"));
+    builder.AddConsole();
+});
 
-services.AddTransient<IAcronymRepository, AcronymRepository>();
-services.AddTransient<IRedditorRepository, RedditorRepository>();
-services.AddTransient<ISubredditRepository, SubredditRepository>();
+// Supabase services
+services.AddSingleton<ISupabaseService, SupabaseService>();
+
+// Supabase repositories
+services.AddScoped<IOptedOutRedditorRepository, OptedOutRedditorRepository>();
+services.AddScoped<IAcronymRepository, AcronymRepository>();
+services.AddScoped<IArtistRepository, ArtistRepository>();
+services.AddScoped<IAlbumRepository, AlbumRepository>();
+services.AddScoped<ITrackRepository, TrackRepository>();
+services.AddScoped<ISubredditRepository, SubredditRepository>();
+services.AddScoped<ISubredditArtistRepository, SubredditArtistRepository>();
+
 services.AddTransient<IRedditService, RedditService>();
-services.AddTransient<ISpotifyService, SpotifyService>();
-services.AddTransient<IExcludedRepository, ExcludedRepository>();
-services.Configure<SpotifyConfiguration>(config.GetSection("Spotify"));
 
 var serviceProvider = services.BuildServiceProvider();
 
-var redditService = serviceProvider.GetService<IRedditService>();
-
-if (redditService == null)
-    throw new NullReferenceException();
+var redditService = serviceProvider.GetService<IRedditService>() ?? throw new NullReferenceException();
 
 var reddit = new RedditClient(
     config["Reddit:AppId"],
@@ -52,4 +50,4 @@ var reddit = new RedditClient(
     config["Reddit:UserAgent"]
 );
 
-await redditService.StartAsync(reddit, debug);
+await redditService.StartAsync(reddit);
