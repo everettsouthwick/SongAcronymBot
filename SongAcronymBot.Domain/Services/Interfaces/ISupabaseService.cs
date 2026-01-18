@@ -1,6 +1,6 @@
 using Supabase;
 
-namespace SongAcronymBot.Domain.Services
+namespace SongAcronymBot.Domain.Services.Interfaces
 {
     /// <summary>
     /// Service for interacting with Supabase

@@ -1,4 +1,5 @@
-using SongAcronymBot.Domain.Services;
+using SongAcronymBot.Domain.Repositories.Interfaces;
+using SongAcronymBot.Domain.Services.Interfaces;
 using Supabase.Interfaces;
 using Supabase.Postgrest.Models;
 using Supabase.Realtime;

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using SongAcronymBot.Domain.Services.Interfaces;
 using Supabase;
 
 namespace SongAcronymBot.Domain.Services

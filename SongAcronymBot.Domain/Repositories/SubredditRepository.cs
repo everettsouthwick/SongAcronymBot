@@ -1,4 +1,5 @@
-using SongAcronymBot.Domain.Services;
+using SongAcronymBot.Domain.Repositories.Interfaces;
+using SongAcronymBot.Domain.Services.Interfaces;
 using SongAcronymBot.Domain.Supabase.Models;
 using static Supabase.Postgrest.Constants;
 
