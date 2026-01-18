@@ -1,11 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Reddit;
 using SongAcronymBot.Core.Services;
-using SongAcronymBot.Domain.Data;
-using SongAcronymBot.Domain.Repositories;
+using SongAcronymBot.Domain.Supabase.Repositories;
 using SongAcronymBot.Domain.Supabase.Services;
 
 var config = new ConfigurationBuilder()
@@ -26,19 +24,19 @@ services.AddLogging(builder =>
     builder.AddConsole();
 });
 
-services.AddDbContext<SongAcronymBotContext>(options =>
-    options.UseSqlServer(config.GetConnectionString("Production"))
-);
-
-// Legacy EF Core repositories
-services.AddTransient<SongAcronymBot.Domain.Repositories.IAcronymRepository, SongAcronymBot.Domain.Repositories.AcronymRepository>();
-services.AddTransient<IRedditService, RedditService>();
-
 // Supabase services
 services.AddSingleton<ISupabaseService, SupabaseService>();
 
 // Supabase repositories
-services.AddScoped<SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository, SongAcronymBot.Domain.Supabase.Repositories.OptedOutRedditorRepository>();
+services.AddScoped<IOptedOutRedditorRepository, OptedOutRedditorRepository>();
+services.AddScoped<IAcronymRepository, AcronymRepository>();
+services.AddScoped<IArtistRepository, ArtistRepository>();
+services.AddScoped<IAlbumRepository, AlbumRepository>();
+services.AddScoped<ITrackRepository, TrackRepository>();
+services.AddScoped<ISubredditRepository, SubredditRepository>();
+services.AddScoped<ISubredditArtistRepository, SubredditArtistRepository>();
+
+services.AddTransient<IRedditService, RedditService>();
 
 var serviceProvider = services.BuildServiceProvider();
 

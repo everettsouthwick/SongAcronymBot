@@ -11,5 +11,9 @@ namespace SongAcronymBot.Domain.Supabase.Repositories
         Task<List<Acronym>> GetByTrackIdAsync(Guid trackId);
         Task<List<Acronym>> GetByTypeAsync(AcronymType type);
         Task<List<Acronym>> GetActiveAcronymsAsync();
+
+        // New methods for RedditService
+        Task<List<EnrichedAcronym>> GetEnrichedAcronymsBySubredditNameAsync(string subredditName);
+        Task<List<EnrichedAcronym>> GetEnrichedAcronymsByTextAsync(string acronymText);
     }
 }

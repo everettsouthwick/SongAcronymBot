@@ -4,9 +4,8 @@ using Reddit.Controllers;
 using Reddit.Controllers.EventArgs;
 using Reddit.Exceptions;
 using SongAcronymBot.Core.Model;
-using SongAcronymBot.Domain.Enum;
-using SongAcronymBot.Domain.Models;
-using SongAcronymBot.Domain.Repositories;
+using SongAcronymBot.Domain.Supabase.Models;
+using SongAcronymBot.Domain.Supabase.Repositories;
 using IOptedOutRedditorRepository = SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository;
 using OptedOutRedditorModel = SongAcronymBot.Domain.Supabase.Models.OptedOutRedditor;
 
@@ -30,7 +29,7 @@ namespace SongAcronymBot.Core.Services
         private volatile HashSet<string> DisabledRedditors = null!; // Made volatile for thread safety, HashSet for O(1) lookups
 
         // Cache for subreddit acronyms
-        private readonly Dictionary<string, List<Acronym>> SubredditAcronymsCache = [];
+        private readonly Dictionary<string, List<EnrichedAcronym>> SubredditAcronymsCache = [];
 
         private readonly Dictionary<string, DateTime> LastSubredditAcronymsUpdate = [];
         private readonly TimeSpan SubredditAcronymsCacheTimeout = TimeSpan.FromHours(6);
@@ -125,7 +124,7 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (var message in e.Added)
             {
-                _logger.LogDebug("New unread message from {Author}: {Body}", message.Author, message.Body);
+                _logger.LogTrace("New unread message from {Author}: {Body}", message.Author, message.Body);
                 try
                 {
                     await ProcessMessageAsync(message);
@@ -198,7 +197,6 @@ namespace SongAcronymBot.Core.Services
                 }
 
                 await AddOptedOutRedditorAsync(message.Author);
-                _logger.LogDebug("Refreshing opted-out redditors list after bad bot response...");
                 DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
                 _logger.LogDebug("Retrieved {Count} opted-out redditors", DisabledRedditors.Count);
 
@@ -226,7 +224,6 @@ namespace SongAcronymBot.Core.Services
             {
                 await parent.DeleteAsync();
                 await AddOptedOutRedditorAsync(message.Author);
-                _logger.LogDebug("Refreshing opted-out redditors list after delete request...");
                 DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
                 _logger.LogDebug("Retrieved {Count} opted-out redditors", DisabledRedditors.Count);
                 return true;
@@ -254,7 +251,8 @@ namespace SongAcronymBot.Core.Services
             for (int i = 0; i < acronymsToQuery.Count; i++)
             {
                 var query = acronymsToQuery[i];
-                var acronyms = (await _acronymRepository.GetAllByNameAsync(query)).GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
+                var results = await _acronymRepository.GetEnrichedAcronymsByTextAsync(query);
+                var acronyms = results.GroupBy(x => x.ArtistName).Select(x => x.First()).ToList();
 
                 if (acronyms.Count > 0)
                 {
@@ -300,7 +298,7 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (var comment in e.Added)
             {
-                _logger.LogDebug("New comment in {Subreddit}: {Title}", comment.Subreddit, comment.Root.Title);
+                _logger.LogTrace("New comment in {Subreddit}: {Title}", comment.Subreddit, comment.Root.Title);
                 try
                 {
                     await ProcessCommentAsync(comment);
@@ -398,7 +396,6 @@ namespace SongAcronymBot.Core.Services
                     {
                         _logger.LogWarning(ex, "Failed to reply to opt-out");
                     }
-                    _logger.LogDebug("Refreshing opted-out redditors list after user optout...");
                     DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
                     _logger.LogDebug("Retrieved {Count} opted-out redditors", DisabledRedditors.Count);
                     return true;
@@ -415,7 +412,6 @@ namespace SongAcronymBot.Core.Services
                     {
                         _logger.LogWarning(ex, "Failed to reply to opt-in");
                     }
-                    _logger.LogDebug("Refreshing opted-out redditors list after user optin...");
                     DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
                     _logger.LogDebug("Retrieved {Count} opted-out redditors", DisabledRedditors.Count);
                     return true;
@@ -429,25 +425,33 @@ namespace SongAcronymBot.Core.Services
         {
             var matches = new List<AcronymMatch>();
 
-            var acronyms = new List<Acronym>();
+            var acronyms = new List<EnrichedAcronym>();
 
             // Check if subreddit acronyms cache needs refresh
-            var subredditName = comment.Subreddit.ToLower();
-            if (!SubredditAcronymsCache.TryGetValue(subredditName, out List<Acronym>? value) ||
+            var subredditName = comment.Subreddit;
+            if (!SubredditAcronymsCache.TryGetValue(subredditName, out List<EnrichedAcronym>? value) ||
                 DateTime.UtcNow - LastSubredditAcronymsUpdate[subredditName] > SubredditAcronymsCacheTimeout)
             {
-                _logger.LogDebug("Refreshing subreddit acronyms cache for {Subreddit}", subredditName);
-
                 try
                 {
-                    value = await _acronymRepository.GetAllBySubredditNameAsync(subredditName);
+                    value = await _acronymRepository.GetEnrichedAcronymsBySubredditNameAsync(subredditName);
+
+                    if (value.Count == 0)
+                    {
+                        _logger.LogWarning("Cache refresh for {Subreddit} found 0 acronyms.", subredditName);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Cache refresh for {Subreddit} found {Count} acronyms.", subredditName, value.Count);
+                    }
+                    
                     SubredditAcronymsCache[subredditName] = value;
                     LastSubredditAcronymsUpdate[subredditName] = DateTime.UtcNow;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to refresh subreddit acronyms cache for {Subreddit}", subredditName);
-                    value = new List<Acronym>();
+                    value = new List<EnrichedAcronym>();
                 }
             }
 
@@ -464,17 +468,17 @@ namespace SongAcronymBot.Core.Services
             return [.. matches.OrderBy(x => x.Position)];
         }
 
-        private bool IsMatch(Comment comment, Acronym acronym, out int index)
+        private bool IsMatch(Comment comment, EnrichedAcronym acronym, out int index)
         {
             index = -1;
 
-            if (acronym?.AcronymName == null)
+            if (acronym?.AcronymText == null)
             {
                 return false;
             }
 
             var body = comment.Body.ToLower();
-            var acronymName = acronym.AcronymName.ToLower();
+            var acronymName = acronym.AcronymText.ToLower();
 
             index = body.IndexOf(acronymName);
             if (index != -1)
@@ -505,14 +509,14 @@ namespace SongAcronymBot.Core.Services
             return false;
         }
 
-        private static bool IsUnrepliedAndUndefined(Comment comment, Acronym acronym)
+        private static bool IsUnrepliedAndUndefined(Comment comment, EnrichedAcronym acronym)
         {
-            if (acronym?.AcronymName == null)
+            if (acronym?.AcronymText == null)
             {
                 return true;
             }
 
-            var acronymName = acronym.AcronymName.ToLower();
+            var acronymName = acronym.AcronymText.ToLower();
             var definition = acronym.AcronymType switch
             {
                 AcronymType.Album => acronym.AlbumName?.ToLower(),

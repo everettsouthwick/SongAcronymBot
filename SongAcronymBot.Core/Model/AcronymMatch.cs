@@ -1,10 +1,4 @@
-﻿using SongAcronymBot.Domain.Enum;
-using SongAcronymBot.Domain.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using SongAcronymBot.Domain.Supabase.Models;
 
 namespace SongAcronymBot.Core.Model
 {
@@ -14,16 +8,25 @@ namespace SongAcronymBot.Core.Model
         public string? CommentBody { get; set; }
         public int Position { get; set; }
 
-        public AcronymMatch(Acronym acronym, int index)
+        public AcronymMatch(EnrichedAcronym acronym, int index)
         {
-            Acronym = acronym.AcronymName;
+            Acronym = acronym.AcronymText;
+
+            var artistLink = !string.IsNullOrEmpty(acronym.ArtistSlug)
+                ? $"[{acronym.ArtistName}](https://www.myartistradar.com/artists/{acronym.ArtistSlug})"
+                : acronym.ArtistName;
+
+            var albumLink = !string.IsNullOrEmpty(acronym.AlbumSlug) && !string.IsNullOrEmpty(acronym.ArtistSlug)
+                ? $"[{acronym.AlbumName}](https://www.myartistradar.com/artists/{acronym.ArtistSlug}/{acronym.AlbumSlug})"
+                : acronym.AlbumName;
+
             CommentBody = acronym.AcronymType switch
             {
-                AcronymType.Album => $"- {acronym.AcronymName} could mean *{acronym.AlbumName}* ({acronym.YearReleased}), an album by {acronym.ArtistName}.\n",
-                AcronymType.Artist => $"- {acronym.AcronymName} could mean {acronym.ArtistName}.\n",
-                AcronymType.Single => $"- {acronym.AcronymName} could mean \"{acronym.TrackName}\", a single by {acronym.ArtistName}.\n",
-                AcronymType.Track => $"- {acronym.AcronymName} could mean \"{acronym.TrackName}\", a track from *{acronym.AlbumName}* ({acronym.YearReleased}) by {acronym.ArtistName}.\n",
-                _ => $"- {acronym.AcronymName} could mean {acronym.TrackName}, a track from *{acronym.AlbumName}* ({acronym.YearReleased}) by {acronym.ArtistName}.\n",
+                AcronymType.Album => $"- {acronym.AcronymText} could mean *{albumLink}* ({acronym.YearReleased}), an album by {artistLink}.\n",
+                AcronymType.Artist => $"- {acronym.AcronymText} could mean {artistLink}.\n",
+                AcronymType.Single => $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a single by {artistLink}.\n",
+                AcronymType.Track => $"- {acronym.AcronymText} could mean \"{acronym.TrackName}\", a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n",
+                _ => $"- {acronym.AcronymText} could mean {acronym.TrackName}, a track from *{albumLink}* ({acronym.YearReleased}) by {artistLink}.\n",
             };
             Position = index;
         }
