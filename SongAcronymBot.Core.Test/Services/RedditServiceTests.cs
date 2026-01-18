@@ -3,7 +3,6 @@ using Reddit;
 using SongAcronymBot.Core.Services;
 using SongAcronymBot.Domain.Models;
 using SongAcronymBot.Domain.Repositories;
-using SongAcronymBot.Domain.Services;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -17,7 +16,6 @@ namespace SongAcronymBot.Core.Test.Services
 
         private Mock<SongAcronymBot.Domain.Repositories.IAcronymRepository> mockAcronymRepository;
         private Mock<SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository> mockOptedOutRedditorRepository;
-        private Mock<ISpotifyService> mockSpotifyService;
 
         public RedditServiceTests()
         {
@@ -25,15 +23,13 @@ namespace SongAcronymBot.Core.Test.Services
 
             mockAcronymRepository = mockRepository.Create<SongAcronymBot.Domain.Repositories.IAcronymRepository>();
             mockOptedOutRedditorRepository = mockRepository.Create<SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository>();
-            mockSpotifyService = mockRepository.Create<ISpotifyService>();
         }
 
         private RedditService CreateService()
         {
             return new RedditService(
                 mockAcronymRepository.Object,
-                mockOptedOutRedditorRepository.Object,
-                mockSpotifyService.Object);
+                mockOptedOutRedditorRepository.Object);
         }
 
         [Fact]

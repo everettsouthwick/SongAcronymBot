@@ -6,7 +6,6 @@ using Reddit;
 using SongAcronymBot.Core.Services;
 using SongAcronymBot.Domain.Data;
 using SongAcronymBot.Domain.Repositories;
-using SongAcronymBot.Domain.Services;
 using SongAcronymBot.Domain.Supabase.Services;
 
 var config = new ConfigurationBuilder()
@@ -20,35 +19,20 @@ var services = new ServiceCollection();
 // Register IConfiguration for services that need it
 services.AddSingleton<IConfiguration>(config);
 
-// Add logging (filter out EF Core info logs)
+// Add logging from configuration
 services.AddLogging(builder =>
 {
+    builder.AddConfiguration(config.GetSection("Logging"));
     builder.AddConsole();
-    builder.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
 });
 
-bool debug;
-if (bool.TryParse(config["Debug"], out bool debugValue))
-{
-    debug = debugValue;
-}
-else
-{
-    debug = false; // Default value if parsing fails
-}
-
 services.AddDbContext<SongAcronymBotContext>(options =>
-    options.UseSqlServer(debug ? config.GetConnectionString("Production") : config.GetConnectionString("Production"))
+    options.UseSqlServer(config.GetConnectionString("Production"))
 );
 
 // Legacy EF Core repositories
 services.AddTransient<SongAcronymBot.Domain.Repositories.IAcronymRepository, SongAcronymBot.Domain.Repositories.AcronymRepository>();
-services.AddTransient<IRedditorRepository, RedditorRepository>();
-services.AddTransient<SongAcronymBot.Domain.Repositories.ISubredditRepository, SongAcronymBot.Domain.Repositories.SubredditRepository>();
 services.AddTransient<IRedditService, RedditService>();
-services.AddTransient<ISpotifyService, SpotifyService>();
-services.AddTransient<IExcludedRepository, ExcludedRepository>();
-services.Configure<SpotifyConfiguration>(config.GetSection("Spotify"));
 
 // Supabase services
 services.AddSingleton<ISupabaseService, SupabaseService>();
@@ -68,4 +52,4 @@ var reddit = new RedditClient(
     config["Reddit:UserAgent"]
 );
 
-await redditService.StartAsync(reddit, debug);
+await redditService.StartAsync(reddit);
