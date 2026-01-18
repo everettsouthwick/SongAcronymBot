@@ -1,0 +1,15 @@
+using SongAcronymBot.Domain.Supabase.Models;
+
+namespace SongAcronymBot.Domain.Supabase.Repositories
+{
+    public interface IAcronymRepository : IBaseRepository<Acronym>
+    {
+        Task<Acronym?> GetByAcronymTextAsync(string acronym);
+        Task<Acronym?> GetByArtistAndAcronymTextAsync(Guid artistId, string acronym);
+        Task<List<Acronym>> GetByArtistIdAsync(Guid artistId);
+        Task<List<Acronym>> GetByAlbumIdAsync(Guid albumId);
+        Task<List<Acronym>> GetByTrackIdAsync(Guid trackId);
+        Task<List<Acronym>> GetByTypeAsync(AcronymType type);
+        Task<List<Acronym>> GetActiveAcronymsAsync();
+    }
+}
