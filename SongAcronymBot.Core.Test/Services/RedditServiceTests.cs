@@ -15,18 +15,16 @@ namespace SongAcronymBot.Core.Test.Services
     {
         private MockRepository mockRepository;
 
-        private Mock<IAcronymRepository> mockAcronymRepository;
-        private Mock<IRedditorRepository> mockRedditorRepository;
-        private Mock<ISubredditRepository> mockSubredditRepository;
+        private Mock<SongAcronymBot.Domain.Repositories.IAcronymRepository> mockAcronymRepository;
+        private Mock<SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository> mockOptedOutRedditorRepository;
         private Mock<ISpotifyService> mockSpotifyService;
 
         public RedditServiceTests()
         {
             mockRepository = new MockRepository(MockBehavior.Strict);
 
-            mockAcronymRepository = mockRepository.Create<IAcronymRepository>();
-            mockRedditorRepository = mockRepository.Create<IRedditorRepository>();
-            mockSubredditRepository = mockRepository.Create<ISubredditRepository>();
+            mockAcronymRepository = mockRepository.Create<SongAcronymBot.Domain.Repositories.IAcronymRepository>();
+            mockOptedOutRedditorRepository = mockRepository.Create<SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository>();
             mockSpotifyService = mockRepository.Create<ISpotifyService>();
         }
 
@@ -34,8 +32,7 @@ namespace SongAcronymBot.Core.Test.Services
         {
             return new RedditService(
                 mockAcronymRepository.Object,
-                mockRedditorRepository.Object,
-                mockSubredditRepository.Object,
+                mockOptedOutRedditorRepository.Object,
                 mockSpotifyService.Object);
         }
 

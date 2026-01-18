@@ -6,5 +6,10 @@ namespace SongAcronymBot.Domain.Supabase.Repositories
     {
         Task<OptedOutRedditor?> GetByUsernameAsync(string username);
         Task<bool> IsOptedOutAsync(string username);
+        /// <summary>
+        /// Gets all opted-out usernames as a HashSet for O(1) lookups.
+        /// This method handles pagination to retrieve all records beyond Supabase's 1000 row limit.
+        /// </summary>
+        Task<HashSet<string>> GetAllUsernamesAsync();
     }
 }

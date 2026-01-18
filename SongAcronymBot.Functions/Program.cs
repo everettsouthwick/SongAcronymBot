@@ -6,7 +6,6 @@ using SongAcronymBot.Domain.Data;
 using SongAcronymBot.Domain.Repositories;
 using SongAcronymBot.Domain.Services;
 using SongAcronymBot.Domain.Supabase.Services;
-using SongAcronymBot.Domain.Supabase.Repositories;
 
 var host = new HostBuilder()
     .ConfigureServices((context, services) =>
@@ -21,9 +20,9 @@ var host = new HostBuilder()
         });
 
         // Legacy EF Core repositories
-        services.AddTransient<IAcronymRepository, AcronymRepository>();
+        services.AddTransient<SongAcronymBot.Domain.Repositories.IAcronymRepository, SongAcronymBot.Domain.Repositories.AcronymRepository>();
         services.AddTransient<IRedditorRepository, RedditorRepository>();
-        services.AddTransient<ISubredditRepository, SubredditRepository>();
+        services.AddTransient<SongAcronymBot.Domain.Repositories.ISubredditRepository, SongAcronymBot.Domain.Repositories.SubredditRepository>();
         services.AddTransient<IExcludedRepository, ExcludedRepository>();
         services.AddTransient<ISpotifyService, SpotifyService>();
         services.Configure<SpotifyConfiguration>(context.Configuration.GetSection("Spotify"));
@@ -32,13 +31,13 @@ var host = new HostBuilder()
         services.AddSingleton<ISupabaseService, SupabaseService>();
 
         // Supabase repositories
-        services.AddScoped<Domain.Supabase.Repositories.IArtistRepository, Domain.Supabase.Repositories.ArtistRepository>();
-        services.AddScoped<Domain.Supabase.Repositories.IAlbumRepository, Domain.Supabase.Repositories.AlbumRepository>();
-        services.AddScoped<Domain.Supabase.Repositories.ITrackRepository, Domain.Supabase.Repositories.TrackRepository>();
-        services.AddScoped<Domain.Supabase.Repositories.IAcronymRepository, Domain.Supabase.Repositories.AcronymRepository>();
-        services.AddScoped<Domain.Supabase.Repositories.ISubredditRepository, Domain.Supabase.Repositories.SubredditRepository>();
-        services.AddScoped<Domain.Supabase.Repositories.ISubredditArtistRepository, Domain.Supabase.Repositories.SubredditArtistRepository>();
-        services.AddScoped<Domain.Supabase.Repositories.IOptedOutRedditorRepository, Domain.Supabase.Repositories.OptedOutRedditorRepository>();
+        services.AddScoped<SongAcronymBot.Domain.Supabase.Repositories.IArtistRepository, SongAcronymBot.Domain.Supabase.Repositories.ArtistRepository>();
+        services.AddScoped<SongAcronymBot.Domain.Supabase.Repositories.IAlbumRepository, SongAcronymBot.Domain.Supabase.Repositories.AlbumRepository>();
+        services.AddScoped<SongAcronymBot.Domain.Supabase.Repositories.ITrackRepository, SongAcronymBot.Domain.Supabase.Repositories.TrackRepository>();
+        services.AddScoped<SongAcronymBot.Domain.Supabase.Repositories.IAcronymRepository, SongAcronymBot.Domain.Supabase.Repositories.AcronymRepository>();
+        services.AddScoped<SongAcronymBot.Domain.Supabase.Repositories.ISubredditRepository, SongAcronymBot.Domain.Supabase.Repositories.SubredditRepository>();
+        services.AddScoped<SongAcronymBot.Domain.Supabase.Repositories.ISubredditArtistRepository, SongAcronymBot.Domain.Supabase.Repositories.SubredditArtistRepository>();
+        services.AddScoped<SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository, SongAcronymBot.Domain.Supabase.Repositories.OptedOutRedditorRepository>();
     })
     .ConfigureFunctionsWorkerDefaults()
     .Build();

@@ -7,6 +7,8 @@ using SongAcronymBot.Domain.Enum;
 using SongAcronymBot.Domain.Models;
 using SongAcronymBot.Domain.Repositories;
 using SongAcronymBot.Domain.Services;
+using IOptedOutRedditorRepository = SongAcronymBot.Domain.Supabase.Repositories.IOptedOutRedditorRepository;
+using OptedOutRedditorModel = SongAcronymBot.Domain.Supabase.Models.OptedOutRedditor;
 
 namespace SongAcronymBot.Core.Services
 {
@@ -15,14 +17,14 @@ namespace SongAcronymBot.Core.Services
         Task StartAsync(RedditClient reddit, bool debug = false);
     }
 
-    public class RedditService(IAcronymRepository acronymRepository, IRedditorRepository redditorRepository, ISpotifyService spotifyService) : IRedditService
+    public class RedditService(IAcronymRepository acronymRepository, IOptedOutRedditorRepository optedOutRedditorRepository, ISpotifyService spotifyService) : IRedditService
     {
         private readonly IAcronymRepository _acronymRepository = acronymRepository ?? throw new ArgumentNullException(nameof(acronymRepository));
-        private readonly IRedditorRepository _redditorRepository = redditorRepository ?? throw new ArgumentNullException(nameof(redditorRepository));
+        private readonly IOptedOutRedditorRepository _optedOutRedditorRepository = optedOutRedditorRepository ?? throw new ArgumentNullException(nameof(optedOutRedditorRepository));
         private readonly ISpotifyService _spotifyService = spotifyService ?? throw new ArgumentNullException(nameof(spotifyService));
 
         private RedditClient Reddit = null!;
-        private volatile List<Redditor> DisabledRedditors = null!; // Made volatile for thread safety
+        private volatile HashSet<string> DisabledRedditors = null!; // Made volatile for thread safety, HashSet for O(1) lookups
         private volatile bool Debug;
 
         // Cache for global acronyms
@@ -44,8 +46,17 @@ namespace SongAcronymBot.Core.Services
             ArgumentNullException.ThrowIfNull(reddit);
 
             Reddit = reddit;
-            DisabledRedditors = await _redditorRepository.GetAllDisabled();
             Debug = debug;
+
+            if (Debug)
+            {
+                Console.WriteLine("DEBUG :: Retrieving opted-out redditors from database...");
+            }
+            DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
+            if (Debug)
+            {
+                Console.WriteLine($"DEBUG :: Retrieved {DisabledRedditors.Count} opted-out redditors");
+            }
 
             // Initialize global acronyms cache
             if (Debug)
@@ -228,8 +239,16 @@ namespace SongAcronymBot.Core.Services
                     await parent.DeleteAsync();
                 }
 
-                await AddOrUpdateRedditor(message.Id, message.Author, false);
-                DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                await AddOptedOutRedditorAsync(message.Author);
+                if (Debug)
+                {
+                    Console.WriteLine("DEBUG :: Refreshing opted-out redditors list after bad bot response...");
+                }
+                DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
+                if (Debug)
+                {
+                    Console.WriteLine($"DEBUG :: Retrieved {DisabledRedditors.Count} opted-out redditors");
+                }
 
                 return true;
             }
@@ -254,8 +273,16 @@ namespace SongAcronymBot.Core.Services
             if (parent.Body.Contains(message.Author, StringComparison.CurrentCultureIgnoreCase))
             {
                 await parent.DeleteAsync();
-                await AddOrUpdateRedditor(message.Id, message.Author, false);
-                DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                await AddOptedOutRedditorAsync(message.Author);
+                if (Debug)
+                {
+                    Console.WriteLine("DEBUG :: Refreshing opted-out redditors list after delete request...");
+                }
+                DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
+                if (Debug)
+                {
+                    Console.WriteLine($"DEBUG :: Retrieved {DisabledRedditors.Count} opted-out redditors");
+                }
                 return true;
             }
 
@@ -422,7 +449,7 @@ namespace SongAcronymBot.Core.Services
             }
 
             // Do not reply to submissions by someone who has disabled us
-            if (DisabledRedditors.Any(x => (x.Username ?? string.Empty).Equals(comment.Author, StringComparison.CurrentCultureIgnoreCase)))
+            if (DisabledRedditors.Contains(comment.Author))
             {
                 if (Debug)
                 {
@@ -455,7 +482,7 @@ namespace SongAcronymBot.Core.Services
                     {
                         Console.WriteLine("DEBUG :: USER OPTOUT");
                     }
-                    await AddOrUpdateRedditor(comment.Id, comment.Author, false);
+                    await AddOptedOutRedditorAsync(comment.Author);
                     try
                     {
                         await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been disabled from receiving automatic replies.\n", comment.Author));
@@ -467,7 +494,15 @@ namespace SongAcronymBot.Core.Services
                             Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
                         }
                     }
-                    DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                    if (Debug)
+                    {
+                        Console.WriteLine("DEBUG :: Refreshing opted-out redditors list after user optout...");
+                    }
+                    DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
+                    if (Debug)
+                    {
+                        Console.WriteLine($"DEBUG :: Retrieved {DisabledRedditors.Count} opted-out redditors");
+                    }
                     return true;
                 }
                 else if (comment.Body.Equals("optin", StringComparison.CurrentCultureIgnoreCase))
@@ -476,7 +511,7 @@ namespace SongAcronymBot.Core.Services
                     {
                         Console.WriteLine("DEBUG :: USER OPTIN");
                     }
-                    await AddOrUpdateRedditor(comment.Id, comment.Author, true);
+                    await RemoveOptedOutRedditorAsync(comment.Author);
                     try
                     {
                         await comment.ReplyAsync(FormatReplyBodyWithFooter("- Your account has been enabled for receiving automatic replies.\n", comment.Author));
@@ -488,7 +523,15 @@ namespace SongAcronymBot.Core.Services
                             Console.WriteLine($"DEBUG :: Failed to reply - {ex.Message}");
                         }
                     }
-                    DisabledRedditors = await _redditorRepository.GetAllDisabled();
+                    if (Debug)
+                    {
+                        Console.WriteLine("DEBUG :: Refreshing opted-out redditors list after user optin...");
+                    }
+                    DisabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
+                    if (Debug)
+                    {
+                        Console.WriteLine($"DEBUG :: Retrieved {DisabledRedditors.Count} opted-out redditors");
+                    }
                     return true;
                 }
             }
@@ -715,27 +758,32 @@ namespace SongAcronymBot.Core.Services
 
         #region Shared Functionality
 
-        private async Task<Redditor> AddOrUpdateRedditor(string id, string username, bool enabled)
+        private async Task AddOptedOutRedditorAsync(string username)
         {
-            var redditor = await _redditorRepository.GetByNameAsync(username);
-
-            if (redditor == null)
+            var existingRedditor = await _optedOutRedditorRepository.GetByUsernameAsync(username);
+            if (existingRedditor != null)
             {
-                redditor = new Redditor
-                {
-                    Id = id,
-                    Username = username,
-                    Enabled = enabled
-                };
-                await _redditorRepository.AddAsync(redditor);
-            }
-            else
-            {
-                redditor.Enabled = enabled;
-                await _redditorRepository.UpdateAsync(redditor);
+                return; // Already opted out
             }
 
-            return redditor;
+            var optedOutRedditor = new OptedOutRedditorModel
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                OptedOutAt = DateTime.UtcNow
+            };
+            await _optedOutRedditorRepository.CreateAsync(optedOutRedditor);
+        }
+
+        private async Task RemoveOptedOutRedditorAsync(string username)
+        {
+            var existingRedditor = await _optedOutRedditorRepository.GetByUsernameAsync(username);
+            if (existingRedditor == null)
+            {
+                return; // Not opted out
+            }
+
+            await _optedOutRedditorRepository.DeleteAsync(existingRedditor.Id);
         }
 
         private static string FormatReplyBodyWithFooter(string body, string author)
