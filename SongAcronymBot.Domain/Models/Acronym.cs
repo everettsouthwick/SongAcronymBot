@@ -1,22 +1,45 @@
-﻿using SongAcronymBot.Domain.Enum;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Supabase.Postgrest.Attributes;
+using Supabase.Postgrest.Models;
 
-namespace SongAcronymBot.Domain.Models
+namespace SongAcronymBot.Domain.Supabase.Models
 {
-    public class Acronym
+    [Table("acronyms")]
+    public class Acronym : BaseModel
     {
-        public int Id { get; set; }
-        public string? AcronymName { get; set; }
-        public AcronymType AcronymType { get; set; }
-        public string? ArtistName { get; set; }
-        public string? AlbumName { get; set; }
-        public string? TrackName { get; set; }
-        public string? YearReleased { get; set; }
-        public bool Enabled { get; set; }
-        public Subreddit? Subreddit { get; set; }
+        [PrimaryKey("id")]
+        [Column("id")]
+        public Guid Id { get; set; }
+
+        [Column("artist_id")]
+        public Guid? ArtistId { get; set; }
+
+        [Column("album_id")]
+        public Guid? AlbumId { get; set; }
+
+        [Column("track_id")]
+        public Guid? TrackId { get; set; }
+
+        [Column("acronym")]
+        public string AcronymText { get; set; } = string.Empty;
+
+        [Column("acronym_type")]
+        public string AcronymType { get; set; } = "track";
+
+        [Column("is_active")]
+        public bool IsActive { get; set; } = true;
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("updated_at")]
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public enum AcronymType
+    {
+        Artist,
+        Album,
+        Track,
+        Single
     }
 }

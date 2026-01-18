@@ -1,9 +1,9 @@
-using SongAcronymBot.Domain.Supabase.Services;
+using SongAcronymBot.Domain.Services;
 using Supabase.Interfaces;
 using Supabase.Postgrest.Models;
 using Supabase.Realtime;
 
-namespace SongAcronymBot.Domain.Supabase.Repositories
+namespace SongAcronymBot.Domain.Repositories
 {
     /// <summary>
     /// Generic repository implementation for CRUD operations on Supabase tables
