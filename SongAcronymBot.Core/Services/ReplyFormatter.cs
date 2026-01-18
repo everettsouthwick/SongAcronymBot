@@ -18,10 +18,28 @@ namespace SongAcronymBot.Core.Services
         public string BuildReplyBody(IEnumerable<AcronymMatch> matches, string author)
         {
             var replyBody = "";
-            foreach (var match in matches)
+
+            // Group matches by acronym text to consolidate duplicates
+            var groupedMatches = matches
+                .GroupBy(m => m.Acronym)
+                .OrderBy(g => g.Min(m => m.Position));
+
+            foreach (var group in groupedMatches)
             {
-                replyBody += match.CommentBody;
+                var matchList = group.ToList();
+                if (matchList.Count == 1)
+                {
+                    // Single match - use original CommentBody
+                    replyBody += matchList[0].CommentBody;
+                }
+                else
+                {
+                    // Multiple matches for same acronym - consolidate with "or"
+                    var descriptions = string.Join(" or ", matchList.Select(m => m.MatchDescription));
+                    replyBody += $"- {group.Key} could mean {descriptions}.\n";
+                }
             }
+
             return FormatReplyBodyWithFooter(replyBody, author);
         }
     }

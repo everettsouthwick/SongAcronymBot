@@ -42,6 +42,7 @@ services.AddSingleton<IOptOutManager, OptOutManager>();
 services.AddSingleton<ISubredditAcronymCache, SubredditAcronymCache>();
 services.AddTransient<IReplyFormatter, ReplyFormatter>();
 services.AddTransient<IAcronymMatcher, AcronymMatcher>();
+services.AddTransient<IPromotionalMessageFormatter, PromotionalMessageFormatter>();
 services.AddTransient<IMessageProcessor, MessageProcessor>();
 services.AddTransient<ICommentProcessor, CommentProcessor>();
 services.AddTransient<IRedditService, RedditService>();
