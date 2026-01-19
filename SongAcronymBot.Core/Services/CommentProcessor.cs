@@ -55,11 +55,11 @@ namespace SongAcronymBot.Core.Services
             }
             catch (RedditForbiddenException ex)
             {
-                _logger.LogWarning(ex, "Failed to reply - forbidden", ex.Message);
+                _logger.LogError(ex, "Failed to reply - forbidden", ex.Message);
             }
             catch (RedditControllerException ex)
             {
-                _logger.LogWarning(ex, "Failed to reply - controller error: {Message}", ex.Message);
+                _logger.LogError(ex, "Failed to reply - controller error: {Message}", ex.Message);
             }
         }
 
