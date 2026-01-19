@@ -11,7 +11,7 @@ namespace SongAcronymBot.Core.Services
         /// <inheritdoc/>
         public string FormatReplyBodyWithFooter(string body, string author)
         {
-            return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment. |) ^[/r/songacronymbot](/r/songacronymbot) ^(for feedback.)";
+            return $"{body}\n---\n\n^[/u/{author}](/u/{author}) ^(can reply with \"delete\" to remove comment.)";
         }
 
         /// <inheritdoc/>
