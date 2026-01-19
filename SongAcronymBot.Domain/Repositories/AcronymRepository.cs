@@ -1,100 +1,266 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SongAcronymBot.Domain.Data;
-using SongAcronymBot.Domain.Models;
+using SongAcronymBot.Domain.Repositories.Interfaces;
+using SongAcronymBot.Domain.Services.Interfaces;
+using SongAcronymBot.Domain.Supabase.Models;
+using static Supabase.Postgrest.Constants;
 
 namespace SongAcronymBot.Domain.Repositories
 {
-    public interface IAcronymRepository : IRepository<Acronym>
+    public class AcronymRepository(
+        ISupabaseService supabaseService,
+        ISubredditRepository subredditRepository,
+        ISubredditArtistRepository subredditArtistRepository,
+        IArtistRepository artistRepository,
+        IAlbumRepository albumRepository,
+        ITrackRepository trackRepository) : BaseRepository<Acronym>(supabaseService), IAcronymRepository
     {
-        Task<Acronym> GetByIdAsync(int id);
+        private readonly ISubredditRepository _subredditRepository = subredditRepository;
+        private readonly ISubredditArtistRepository _subredditArtistRepository = subredditArtistRepository;
+        private readonly IArtistRepository _artistRepository = artistRepository;
+        private readonly IAlbumRepository _albumRepository = albumRepository;
+        private readonly ITrackRepository _trackRepository = trackRepository;
 
-        Task<Acronym> GetByNameAsync(string name, string subredditId);
-
-        Task<List<Acronym>> GetAllByNameAsync(string name);
-
-        Task<List<Acronym>> GetAllBySubredditIdAsync(string id);
-
-        Task<List<Acronym>> GetAllBySubredditNameAsync(string name);
-
-        Task<List<Acronym>> GetAllGlobalAcronyms();
-    }
-
-    public class AcronymRepository : Repository<Acronym>, IAcronymRepository
-    {
-        public AcronymRepository(SongAcronymBotContext context) : base(context)
+        public async Task<Acronym?> GetByAcronymTextAsync(string acronym)
         {
+            var response = await GetQueryBuilder()
+                .Filter("acronym", Operator.Equals, acronym)
+                .Single();
+
+            return response;
         }
 
-        public async Task<Acronym> GetByIdAsync(int id)
+        public async Task<Acronym?> GetByArtistAndAcronymTextAsync(Guid artistId, string acronym)
         {
-            try
+            var response = await GetQueryBuilder()
+                .Filter("artist_id", Operator.Equals, artistId.ToString())
+                .Filter("acronym", Operator.Equals, acronym)
+                .Single();
+
+            return response;
+        }
+
+        public async Task<List<Acronym>> GetByArtistIdAsync(Guid artistId)
+        {
+            var response = await GetQueryBuilder()
+                .Filter("artist_id", Operator.Equals, artistId.ToString())
+                .Get();
+
+            return response.Models;
+        }
+
+        public async Task<List<Acronym>> GetByAlbumIdAsync(Guid albumId)
+        {
+            var response = await GetQueryBuilder()
+                .Filter("album_id", Operator.Equals, albumId.ToString())
+                .Get();
+
+            return response.Models;
+        }
+
+        public async Task<List<Acronym>> GetByTrackIdAsync(Guid trackId)
+        {
+            var response = await GetQueryBuilder()
+                .Filter("track_id", Operator.Equals, trackId.ToString())
+                .Get();
+
+            return response.Models;
+        }
+
+        public async Task<List<Acronym>> GetByTypeAsync(AcronymType type)
+        {
+            var response = await GetQueryBuilder()
+                .Filter("acronym_type", Operator.Equals, type.ToString().ToLowerInvariant())
+                .Get();
+
+            return response.Models;
+        }
+
+        public async Task<List<Acronym>> GetActiveAcronymsAsync()
+        {
+            var response = await GetQueryBuilder()
+                .Filter("is_active", Operator.Equals, "true")
+                .Get();
+
+            return response.Models;
+        }
+
+        private const int BatchSize = 250;
+
+        public async Task<List<EnrichedAcronym>> GetEnrichedAcronymsBySubredditNameAsync(string subredditName)
+        {
+            // 1. Get the subreddit by name
+            var subreddit = await _subredditRepository.GetByNameAsync(subredditName);
+            if (subreddit == null || !subreddit.IsActive)
             {
-                return await GetAll().SingleAsync(x => x.Id == id && x.Enabled);
+                return [];
             }
-            catch (Exception ex)
+
+            // 2. Get all artist IDs linked to this subreddit
+            var subredditArtists = await _subredditArtistRepository.GetBySubredditIdAsync(subreddit.Id);
+            if (subredditArtists.Count == 0)
             {
-                throw new Exception($"Couldn't retrieve entity: {ex.Message}");
+                return [];
+            }
+
+            var artistIds = subredditArtists.Select(sa => sa.ArtistId).ToHashSet();
+            var allAcronyms = new List<Acronym>();
+
+            // 3. Get all acronyms for these artists (batched)
+            var artistIdList = artistIds.ToList();
+            for (int i = 0; i < artistIdList.Count; i += BatchSize)
+            {
+                var batch = artistIdList.Skip(i).Take(BatchSize).Select(id => id.ToString()).ToList();
+                var batchResponse = await GetQueryBuilder()
+                    .Filter("artist_id", Operator.In, batch)
+                    .Filter("is_active", Operator.Equals, "true")
+                    .Get();
+                
+                allAcronyms.AddRange(batchResponse.Models);
+            }
+
+            // 4. Filter by min acronym length for this subreddit
+            allAcronyms = allAcronyms
+                .Where(a => a.AcronymText.Length >= subreddit.MinAcronymLength)
+                .ToList();
+
+            // 5. Enrich the acronyms with artist/album/track data
+            return await EnrichAcronymsAsync(allAcronyms);
+        }
+
+        public async Task<List<EnrichedAcronym>> GetEnrichedAcronymsByTextAsync(string acronymText)
+        {
+            // Get all acronyms matching this text (case-insensitive)
+            var response = await GetQueryBuilder()
+                .Filter("acronym", Operator.Equals, acronymText.ToUpperInvariant())
+                .Filter("is_active", Operator.Equals, "true")
+                .Get();
+
+            return await EnrichAcronymsAsync(response.Models);
+        }
+
+        private async Task<List<EnrichedAcronym>> EnrichAcronymsAsync(List<Acronym> acronyms)
+        {
+            if (acronyms.Count == 0)
+            {
+                return [];
+            }
+
+            // Collect all unique IDs for batch fetching
+            var artistIds = acronyms.Where(a => a.ArtistId.HasValue).Select(a => a.ArtistId!.Value).Distinct().ToList();
+            var albumIds = acronyms.Where(a => a.AlbumId.HasValue).Select(a => a.AlbumId!.Value).Distinct().ToList();
+            var trackIds = acronyms.Where(a => a.TrackId.HasValue).Select(a => a.TrackId!.Value).Distinct().ToList();
+
+            // Fetch related entities
+            var artists = new Dictionary<Guid, Artist>();
+            await FetchInBatchesAsync(artistIds, async (batch) =>
+            {
+                var response = await _supabaseService.GetClient().From<Artist>()
+                    .Filter("id", Operator.In, batch)
+                    .Get();
+                foreach (var item in response.Models) artists[item.Id] = item;
+            });
+
+            var albums = new Dictionary<Guid, Album>();
+            await FetchInBatchesAsync(albumIds, async (batch) =>
+            {
+                var response = await _supabaseService.GetClient().From<Album>()
+                    .Filter("id", Operator.In, batch)
+                    .Get();
+                foreach (var item in response.Models) albums[item.Id] = item;
+            });
+
+            var tracks = new Dictionary<Guid, Track>();
+            await FetchInBatchesAsync(trackIds, async (batch) =>
+            {
+                var response = await _supabaseService.GetClient().From<Track>()
+                    .Filter("id", Operator.In, batch)
+                    .Get();
+                foreach (var item in response.Models) tracks[item.Id] = item;
+            });
+
+            // Build enriched acronyms
+            var enrichedAcronyms = new List<EnrichedAcronym>();
+            foreach (var acronym in acronyms)
+            {
+                var enriched = new EnrichedAcronym
+                {
+                    Id = acronym.Id,
+                    AcronymText = acronym.AcronymText,
+                    AcronymType = ParseAcronymType(acronym.AcronymType),
+                    IsActive = acronym.IsActive,
+                    ArtistId = acronym.ArtistId,
+                    AlbumId = acronym.AlbumId,
+                    TrackId = acronym.TrackId
+                };
+
+                // Add artist info
+                if (acronym.ArtistId.HasValue && artists.TryGetValue(acronym.ArtistId.Value, out var artist))
+                {
+                    enriched.ArtistName = artist.Name;
+                    enriched.ArtistSlug = artist.Slug;
+                }
+
+                // Add album info
+                if (acronym.AlbumId.HasValue && albums.TryGetValue(acronym.AlbumId.Value, out var album))
+                {
+                    enriched.AlbumName = album.Name;
+                    enriched.YearReleased = album.YearReleased;
+                    enriched.AlbumSlug = album.Slug;
+                }
+
+                // Add track info
+                if (acronym.TrackId.HasValue && tracks.TryGetValue(acronym.TrackId.Value, out var track))
+                {
+                    enriched.TrackName = track.Name;
+                    enriched.IsSingle = track.IsSingle;
+
+                    // If track has album but acronym doesn't, get album from track
+                    if (track.AlbumId.HasValue && !acronym.AlbumId.HasValue)
+                    {
+                        if (!albums.TryGetValue(track.AlbumId.Value, out var trackAlbum))
+                        {
+                            // This single fetch might happen if the album wasn't in our initial albumIds list
+                            // (which comes from acronym.AlbumId). If many tracks point to albums not directly referenced by acronyms,
+                            // we might want to batch this too, but unrelated to the current crash.
+                            trackAlbum = await _albumRepository.GetByIdAsync(track.AlbumId.Value);
+                        }
+                        if (trackAlbum != null)
+                        {
+                            enriched.AlbumId = trackAlbum.Id;
+                            enriched.AlbumName = trackAlbum.Name;
+                            enriched.YearReleased = trackAlbum.YearReleased;
+                            enriched.AlbumSlug = trackAlbum.Slug;
+                        }
+                    }
+                }
+
+                enrichedAcronyms.Add(enriched);
+            }
+
+            return enrichedAcronyms;
+        }
+
+        private static async Task FetchInBatchesAsync(List<Guid> ids, Func<List<string>, Task> fetchAction)
+        {
+            for (int i = 0; i < ids.Count; i += BatchSize)
+            {
+                var batch = ids.Skip(i).Take(BatchSize).Select(id => id.ToString()).ToList();
+                if (batch.Count > 0)
+                {
+                    await fetchAction(batch);
+                }
             }
         }
 
-        public async Task<Acronym> GetByNameAsync(string name, string subredditId)
+        private static AcronymType ParseAcronymType(string type)
         {
-            try
+            return type.ToLowerInvariant() switch
             {
-                return await GetAll().SingleAsync(x => x.AcronymName == name && x.Subreddit.Id == subredditId);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Couldn't retrieve entity: {ex.Message}");
-            }
-        }
-
-        public async Task<List<Acronym>> GetAllByNameAsync(string name)
-        {
-            try
-            {
-                return await GetAll().Where(x => x.AcronymName == name).ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Couldn't retrieve entity: {ex.Message}");
-            }
-        }
-
-        public async Task<List<Acronym>> GetAllBySubredditIdAsync(string id)
-        {
-            try
-            {
-                return await GetAll().Where(x => x.Subreddit.Id == id).ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Couldn't retrieve entity: {ex.Message}");
-            }
-        }
-
-        public async Task<List<Acronym>> GetAllBySubredditNameAsync(string name)
-        {
-            try
-            {
-                return await GetAll().Where(x => x.Subreddit.Name == name).ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Couldn't retrieve entity: {ex.Message}");
-            }
-        }
-
-        public async Task<List<Acronym>> GetAllGlobalAcronyms()
-        {
-            try
-            {
-                return await GetAll().Where(x => x.Subreddit.Id == "global").ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Couldn't retrieve entity: {ex.Message}");
-            }
+                "artist" => AcronymType.Artist,
+                "album" => AcronymType.Album,
+                "track" => AcronymType.Track,
+                "single" => AcronymType.Single,
+                _ => AcronymType.Track
+            };
         }
     }
 }

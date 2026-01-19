@@ -3,8 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Reddit;
 using SongAcronymBot.Core.Services;
-using SongAcronymBot.Domain.Supabase.Repositories;
-using SongAcronymBot.Domain.Supabase.Services;
+using SongAcronymBot.Core.Services.Interfaces;
+using SongAcronymBot.Domain.Repositories;
+using SongAcronymBot.Domain.Repositories.Interfaces;
+using SongAcronymBot.Domain.Services;
+using SongAcronymBot.Domain.Services.Interfaces;
 
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
@@ -14,10 +17,7 @@ var config = new ConfigurationBuilder()
 
 var services = new ServiceCollection();
 
-// Register IConfiguration for services that need it
 services.AddSingleton<IConfiguration>(config);
-
-// Add logging from configuration
 services.AddLogging(builder =>
 {
     builder.AddConfiguration(config.GetSection("Logging"));
@@ -35,7 +35,16 @@ services.AddScoped<IAlbumRepository, AlbumRepository>();
 services.AddScoped<ITrackRepository, TrackRepository>();
 services.AddScoped<ISubredditRepository, SubredditRepository>();
 services.AddScoped<ISubredditArtistRepository, SubredditArtistRepository>();
+services.AddScoped<IPromotionalMessageRepository, PromotionalMessageRepository>();
 
+// Core services (SOLID refactored)
+services.AddSingleton<IOptOutManager, OptOutManager>();
+services.AddSingleton<ISubredditAcronymCache, SubredditAcronymCache>();
+services.AddTransient<IReplyFormatter, ReplyFormatter>();
+services.AddTransient<IAcronymMatcher, AcronymMatcher>();
+services.AddTransient<IPromotionalMessageFormatter, PromotionalMessageFormatter>();
+services.AddTransient<IMessageProcessor, MessageProcessor>();
+services.AddTransient<ICommentProcessor, CommentProcessor>();
 services.AddTransient<IRedditService, RedditService>();
 
 var serviceProvider = services.BuildServiceProvider();

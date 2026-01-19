@@ -3,21 +3,24 @@ using Supabase.Postgrest.Models;
 
 namespace SongAcronymBot.Domain.Supabase.Models
 {
-    [Table("subreddits")]
-    public class Subreddit : BaseModel
+    [Table("promotional_messages")]
+    public class PromotionalMessage : BaseModel
     {
         [PrimaryKey("id")]
         [Column("id")]
         public Guid Id { get; set; }
 
-        [Column("name")]
-        public string Name { get; set; } = string.Empty;
+        [Column("message_text")]
+        public string MessageText { get; set; } = string.Empty;
 
-        [Column("min_acronym_length")]
-        public int MinAcronymLength { get; set; } = 3;
+        [Column("url")]
+        public string Url { get; set; } = string.Empty;
 
         [Column("is_active")]
         public bool IsActive { get; set; } = true;
+
+        [Column("weight")]
+        public int Weight { get; set; } = 1;
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
