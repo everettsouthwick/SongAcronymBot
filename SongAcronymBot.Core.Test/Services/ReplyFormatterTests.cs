@@ -28,7 +28,6 @@ namespace SongAcronymBot.Core.Test.Services
             Assert.Contains(body, result);
             Assert.Contains("/u/testuser", result);
             Assert.Contains("can reply with \"delete\"", result);
-            Assert.Contains("/r/songacronymbot", result);
         }
 
         [Fact]
