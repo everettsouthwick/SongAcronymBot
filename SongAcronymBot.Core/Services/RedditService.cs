@@ -113,7 +113,7 @@ namespace SongAcronymBot.Core.Services
                 var promoMessage = await _promotionalMessageRepository.GetRandomActiveMessageAsync();
                 if (promoMessage == null)
                 {
-                    _logger.LogDebug("No active promotional messages in database");
+                    _logger.LogWarning("No active promotional messages in database");
                     return;
                 }
 
@@ -127,20 +127,20 @@ namespace SongAcronymBot.Core.Services
                         var newBody = comment.Body + promoText;
                         await comment.EditAsync(newBody);
 
-                        _logger.LogInformation("Added promotional message to comment {CommentId}", comment.Id);
+                        _logger.LogInformation("Added promotional message to comment in {Subreddit}", comment.Subreddit);
 
                         // Only edit one comment per check
                         return;
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogWarning(ex, "Failed to edit comment {CommentId}", comment.Id);
+                        _logger.LogError(ex, "Failed to edit comment in {Subreddit}", comment.Subreddit);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to check recent comments for promotional messages");
+                _logger.LogError(ex, "Failed to check recent comments for promotional messages");
             }
         }
 
@@ -157,7 +157,7 @@ namespace SongAcronymBot.Core.Services
                 }
                 catch (RedditForbiddenException ex)
                 {
-                    _logger.LogWarning(ex, "Failed to process message");
+                    _logger.LogError(ex, "Failed to process message");
                 }
             }
         }
@@ -173,11 +173,11 @@ namespace SongAcronymBot.Core.Services
                 }
                 catch (RedditForbiddenException ex)
                 {
-                    _logger.LogWarning(ex, "Failed to process comment");
+                    _logger.LogError(ex, "Failed to process comment");
                 }
                 catch (RedditException ex) when (ex.Message.Contains("TooManyRequests"))
                 {
-                    _logger.LogWarning(ex, "Rate limited by Reddit API");
+                    _logger.LogError(ex, "Rate limited by Reddit API");
                 }
             }
         }
@@ -200,7 +200,7 @@ namespace SongAcronymBot.Core.Services
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogWarning(ex, "Failed to delete comment");
+                        _logger.LogError(ex, "Failed to delete comment");
                     }
                 }
             }

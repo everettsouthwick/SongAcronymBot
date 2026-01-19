@@ -54,10 +54,11 @@ namespace SongAcronymBot.Core.Services
             {
                 var comment = reddit.Comment($"t1_{message.Id}").About();
                 await comment.ReplyAsync(replyBody);
+                _logger.LogInformation("Replied to message in {Subreddit}", comment.Subreddit);
             }
             catch (RedditForbiddenException ex)
             {
-                _logger.LogWarning(ex, "Failed to reply");
+                _logger.LogError(ex, "Failed to reply");
             }
         }
 

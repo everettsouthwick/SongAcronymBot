@@ -52,6 +52,7 @@ namespace SongAcronymBot.Core.Services
             try
             {
                 await comment.ReplyAsync(replyBody);
+                _logger.LogInformation("Replied to comment in {Subreddit}", comment.Subreddit);
             }
             catch (RedditForbiddenException ex)
             {
@@ -112,7 +113,7 @@ namespace SongAcronymBot.Core.Services
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogWarning(ex, "Failed to reply to opt-out");
+                        _logger.LogError(ex, "Failed to reply to opt-out");
                     }
                     return true;
                 }
@@ -126,7 +127,7 @@ namespace SongAcronymBot.Core.Services
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogWarning(ex, "Failed to reply to opt-in");
+                        _logger.LogError(ex, "Failed to reply to opt-in");
                     }
                     return true;
                 }

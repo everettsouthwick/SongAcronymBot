@@ -43,7 +43,7 @@ namespace SongAcronymBot.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to refresh subreddit acronyms cache for {Subreddit}", subredditName);
+                    _logger.LogError(ex, "Failed to refresh subreddit acronyms cache for {Subreddit}", subredditName);
                     value = [];
                 }
             }
