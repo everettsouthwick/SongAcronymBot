@@ -105,7 +105,7 @@ namespace SongAcronymBot.Core.Test.Services
             // Assert - Should be consolidated into one line
             Assert.Contains("AIWFCIY could mean \"All I Want For Christmas Is You\" by Mariah Carey or \"All I Want For Color Is Yellow\" by Justin Bieber", result);
             // Should NOT have two separate lines for AIWFCIY
-            Assert.Single(result.Split('\n').Where(l => l.StartsWith("- AIWFCIY")));
+            Assert.Single(result.Split('\n'), l => l.StartsWith("- AIWFCIY"));
         }
 
         [Fact]
