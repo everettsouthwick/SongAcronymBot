@@ -62,7 +62,7 @@ namespace SongAcronymBot.Core.Services
         public async Task RefreshOptedOutUsersAsync()
         {
             _disabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
-            _logger.LogDebug("Retrieved {Count} opted-out redditors", _disabledRedditors.Count);
+            _logger.LogInformation("Refreshed {Count} opted-out redditors", _disabledRedditors.Count);
         }
     }
 }
