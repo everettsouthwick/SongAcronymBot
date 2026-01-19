@@ -83,6 +83,8 @@ namespace SongAcronymBot.Domain.Repositories
             return response.Models;
         }
 
+        private const int BatchSize = 250;
+
         public async Task<List<EnrichedAcronym>> GetEnrichedAcronymsBySubredditNameAsync(string subredditName)
         {
             // 1. Get the subreddit by name
@@ -100,14 +102,20 @@ namespace SongAcronymBot.Domain.Repositories
             }
 
             var artistIds = subredditArtists.Select(sa => sa.ArtistId).ToHashSet();
+            var allAcronyms = new List<Acronym>();
 
-            // 3. Get all acronyms for these artists
-            var allAcronymsResponse = await GetQueryBuilder()
-                .Filter("artist_id", Operator.In, artistIds.Select(id => id.ToString()).ToList())
-                .Filter("is_active", Operator.Equals, "true")
-                .Get();
-            
-            var allAcronyms = allAcronymsResponse.Models;
+            // 3. Get all acronyms for these artists (batched)
+            var artistIdList = artistIds.ToList();
+            for (int i = 0; i < artistIdList.Count; i += BatchSize)
+            {
+                var batch = artistIdList.Skip(i).Take(BatchSize).Select(id => id.ToString()).ToList();
+                var batchResponse = await GetQueryBuilder()
+                    .Filter("artist_id", Operator.In, batch)
+                    .Filter("is_active", Operator.Equals, "true")
+                    .Get();
+                
+                allAcronyms.AddRange(batchResponse.Models);
+            }
 
             // 4. Filter by min acronym length for this subreddit
             allAcronyms = allAcronyms
@@ -143,31 +151,31 @@ namespace SongAcronymBot.Domain.Repositories
 
             // Fetch related entities
             var artists = new Dictionary<Guid, Artist>();
-            if (artistIds.Count > 0)
+            await FetchInBatchesAsync(artistIds, async (batch) =>
             {
                 var response = await _supabaseService.GetClient().From<Artist>()
-                    .Filter("id", Operator.In, artistIds.Select(id => id.ToString()).ToList())
+                    .Filter("id", Operator.In, batch)
                     .Get();
-                foreach (var artist in response.Models) artists[artist.Id] = artist;
-            }
+                foreach (var item in response.Models) artists[item.Id] = item;
+            });
 
             var albums = new Dictionary<Guid, Album>();
-            if (albumIds.Count > 0)
+            await FetchInBatchesAsync(albumIds, async (batch) =>
             {
                 var response = await _supabaseService.GetClient().From<Album>()
-                    .Filter("id", Operator.In, albumIds.Select(id => id.ToString()).ToList())
+                    .Filter("id", Operator.In, batch)
                     .Get();
-                foreach (var album in response.Models) albums[album.Id] = album;
-            }
+                foreach (var item in response.Models) albums[item.Id] = item;
+            });
 
             var tracks = new Dictionary<Guid, Track>();
-            if (trackIds.Count > 0)
+            await FetchInBatchesAsync(trackIds, async (batch) =>
             {
                 var response = await _supabaseService.GetClient().From<Track>()
-                    .Filter("id", Operator.In, trackIds.Select(id => id.ToString()).ToList())
+                    .Filter("id", Operator.In, batch)
                     .Get();
-                foreach (var track in response.Models) tracks[track.Id] = track;
-            }
+                foreach (var item in response.Models) tracks[item.Id] = item;
+            });
 
             // Build enriched acronyms
             var enrichedAcronyms = new List<EnrichedAcronym>();
@@ -210,6 +218,9 @@ namespace SongAcronymBot.Domain.Repositories
                     {
                         if (!albums.TryGetValue(track.AlbumId.Value, out var trackAlbum))
                         {
+                            // This single fetch might happen if the album wasn't in our initial albumIds list
+                            // (which comes from acronym.AlbumId). If many tracks point to albums not directly referenced by acronyms,
+                            // we might want to batch this too, but unrelated to the current crash.
                             trackAlbum = await _albumRepository.GetByIdAsync(track.AlbumId.Value);
                         }
                         if (trackAlbum != null)
@@ -226,6 +237,18 @@ namespace SongAcronymBot.Domain.Repositories
             }
 
             return enrichedAcronyms;
+        }
+
+        private static async Task FetchInBatchesAsync(List<Guid> ids, Func<List<string>, Task> fetchAction)
+        {
+            for (int i = 0; i < ids.Count; i += BatchSize)
+            {
+                var batch = ids.Skip(i).Take(BatchSize).Select(id => id.ToString()).ToList();
+                if (batch.Count > 0)
+                {
+                    await fetchAction(batch);
+                }
+            }
         }
 
         private static AcronymType ParseAcronymType(string type)
