@@ -166,14 +166,18 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (var comment in e.Added)
             {
-                _logger.LogTrace("New comment in {Subreddit}: {Title}", comment.Subreddit, comment.Root.Title);
                 try
                 {
+                    _logger.LogTrace("New comment in {Subreddit}: {Title}", comment.Subreddit, comment.Root.Title);
                     await _commentProcessor.ProcessCommentAsync(_reddit, comment);
                 }
                 catch (RedditForbiddenException ex)
                 {
                     _logger.LogError(ex, "Failed to process comment");
+                }
+                catch (RedditInternalServerErrorException ex)
+                {
+                    _logger.LogError(ex, "Reddit API returned 500 error while processing comment");
                 }
                 catch (RedditException ex) when (ex.Message.Contains("TooManyRequests"))
                 {
