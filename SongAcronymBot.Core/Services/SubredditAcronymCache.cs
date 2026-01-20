@@ -31,11 +31,11 @@ namespace SongAcronymBot.Core.Services
 
                     if (value.Count == 0)
                     {
-                        _logger.LogWarning("Cache refresh for {Subreddit} found 0 acronyms.", subredditName);
+                        _logger.LogWarning("Cache refresh for r/{Subreddit} found 0 acronyms", subredditName);
                     }
                     else
                     {
-                        _logger.LogDebug("Cache refresh for {Subreddit} found {Count} acronyms.", subredditName, value.Count);
+                        _logger.LogDebug("Cache refresh for r/{Subreddit} found {Count} acronyms", subredditName, value.Count);
                     }
 
                     _cache[subredditName] = value;
@@ -43,7 +43,7 @@ namespace SongAcronymBot.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to refresh subreddit acronyms cache for {Subreddit}", subredditName);
+                    _logger.LogError(ex, "Failed to refresh acronym cache for r/{Subreddit}", subredditName);
                     value = [];
                 }
             }

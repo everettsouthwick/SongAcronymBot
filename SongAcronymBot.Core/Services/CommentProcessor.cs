@@ -42,25 +42,26 @@ namespace SongAcronymBot.Core.Services
 
             if (matches.Count == 0)
             {
+                _logger.LogTrace("No acronym matches in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
                 return;
             }
 
             var replyBody = _replyFormatter.BuildReplyBody(matches, comment.Author);
 
-            _logger.LogDebug("Reply body: {ReplyBody}", replyBody);
+            _logger.LogDebug("Generated reply: {ReplyBody}", replyBody);
 
             try
             {
                 await comment.ReplyAsync(replyBody);
-                _logger.LogInformation("Replied to comment in {Subreddit}", comment.Subreddit);
+                _logger.LogInformation("Replied to comment in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
             }
             catch (RedditForbiddenException ex)
             {
-                _logger.LogError(ex, "Failed to reply in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
+                _logger.LogError(ex, "Failed to reply to comment in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
             }
             catch (RedditControllerException ex)
             {
-                _logger.LogError(ex, "Failed to reply in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
+                _logger.LogError(ex, "Failed to reply to comment in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
             }
         }
 
@@ -70,14 +71,14 @@ namespace SongAcronymBot.Core.Services
             // Do not reply to our own submissions
             if (comment.Author.Equals("songacronymbot", StringComparison.CurrentCultureIgnoreCase))
             {
-                _logger.LogTrace("Skipping comment from self");
+                _logger.LogTrace("Skipping own comment");
                 return false;
             }
 
             // Do not reply to submissions by someone who has disabled us
             if (_optOutManager.IsOptedOut(comment.Author))
             {
-                _logger.LogTrace("Skipping comment from disabled user: {Author}", comment.Author);
+                _logger.LogTrace("Skipping opted-out user u/{Author}", comment.Author);
                 return false;
             }
 
@@ -85,7 +86,7 @@ namespace SongAcronymBot.Core.Services
             var commentAge = DateTimeOffset.UtcNow - comment.Created;
             if (commentAge.TotalHours > 24)
             {
-                _logger.LogTrace("Skipping comment older than 24 hours");
+                _logger.LogTrace("Skipping stale comment (over 24 hours)");
                 return false;
             }
 
@@ -105,7 +106,7 @@ namespace SongAcronymBot.Core.Services
             {
                 if (comment.Body.Equals("optout", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    _logger.LogInformation("User {Author} opted out", comment.Author);
+                    _logger.LogInformation("User u/{Author} opted out", comment.Author);
                     await _optOutManager.AddOptedOutRedditorAsync(comment.Author);
                     try
                     {
@@ -113,13 +114,13 @@ namespace SongAcronymBot.Core.Services
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to reply to opt-out for user {Author}", comment.Author);
+                        _logger.LogError(ex, "Failed to reply to opt-out for u/{Author}", comment.Author);
                     }
                     return true;
                 }
                 else if (comment.Body.Equals("optin", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    _logger.LogInformation("User {Author} opted in", comment.Author);
+                    _logger.LogInformation("User u/{Author} opted in", comment.Author);
                     await _optOutManager.RemoveOptedOutRedditorAsync(comment.Author);
                     try
                     {
@@ -127,7 +128,7 @@ namespace SongAcronymBot.Core.Services
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to reply to opt-in for user {Author}", comment.Author);
+                        _logger.LogError(ex, "Failed to reply to opt-in for u/{Author}", comment.Author);
                     }
                     return true;
                 }

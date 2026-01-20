@@ -42,6 +42,7 @@ namespace SongAcronymBot.Core.Services
                 OptedOutAt = DateTime.UtcNow
             };
             await _optedOutRedditorRepository.CreateAsync(optedOutRedditor);
+            _logger.LogInformation("Added u/{Username} to opt-out list", username);
             await RefreshOptedOutUsersAsync();
         }
 
@@ -55,6 +56,7 @@ namespace SongAcronymBot.Core.Services
             }
 
             await _optedOutRedditorRepository.DeleteAsync(existingRedditor.Id);
+            _logger.LogInformation("Removed u/{Username} from opt-out list", username);
             await RefreshOptedOutUsersAsync();
         }
 
@@ -62,7 +64,7 @@ namespace SongAcronymBot.Core.Services
         public async Task RefreshOptedOutUsersAsync()
         {
             _disabledRedditors = await _optedOutRedditorRepository.GetAllUsernamesAsync();
-            _logger.LogDebug("Refreshed {Count} opted-out redditors", _disabledRedditors.Count);
+            _logger.LogDebug("Refreshed opt-out list: {Count} users", _disabledRedditors.Count);
         }
     }
 }

@@ -90,7 +90,7 @@ namespace SongAcronymBot.Core.Services
                 // 1% chance to edit a comment this hour
                 if (_random.Next(100) >= 1)
                 {
-                    _logger.LogDebug("Skipping promotional message check (99% chance)");
+                    _logger.LogDebug("Skipping promotional message check (random skip)");
                     return;
                 }
 
@@ -105,7 +105,7 @@ namespace SongAcronymBot.Core.Services
 
                 if (eligibleComments.Count == 0)
                 {
-                    _logger.LogDebug("No comments found in 24-25 hour window");
+                    _logger.LogDebug("No eligible comments for promotional messages");
                     return;
                 }
 
@@ -113,7 +113,7 @@ namespace SongAcronymBot.Core.Services
                 var promoMessage = await _promotionalMessageRepository.GetRandomActiveMessageAsync();
                 if (promoMessage == null)
                 {
-                    _logger.LogWarning("No active promotional messages in database");
+                    _logger.LogWarning("No active promotional messages found");
                     return;
                 }
 
@@ -127,20 +127,20 @@ namespace SongAcronymBot.Core.Services
                         var newBody = comment.Body + promoText;
                         await comment.EditAsync(newBody);
 
-                        _logger.LogInformation("Added promotional message to comment in {Subreddit}", comment.Subreddit);
+                        _logger.LogInformation("Added promotional message in r/{Subreddit}", comment.Subreddit);
 
                         // Only edit one comment per check
                         return;
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to edit comment in {Subreddit}", comment.Subreddit);
+                        _logger.LogError(ex, "Failed to add promotional message in r/{Subreddit}", comment.Subreddit);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to check recent comments for promotional messages");
+                _logger.LogError(ex, "Failed to check for promotional message eligibility");
             }
         }
 
@@ -150,14 +150,14 @@ namespace SongAcronymBot.Core.Services
         {
             foreach (var message in e.Added)
             {
-                _logger.LogTrace("New unread message from {Author}: {Body}", message.Author, message.Body);
+                _logger.LogTrace("Received message from u/{Author}: {Body}", message.Author, message.Body);
                 try
                 {
                     await _messageProcessor.ProcessMessageAsync(_reddit, message);
                 }
                 catch (RedditForbiddenException ex)
                 {
-                    _logger.LogError(ex, "Failed to process message from {Author} (subject: {Subject}): {Message}", message.Author, message.Subject, ex.Message);
+                    _logger.LogError(ex, "Failed to process message from u/{Author}", message.Author);
                 }
             }
         }
@@ -168,27 +168,27 @@ namespace SongAcronymBot.Core.Services
             {
                 try
                 {
-                    _logger.LogTrace("New comment in {Subreddit}: {Title}", comment.Subreddit, comment.Root.Title);
+                    _logger.LogTrace("Received comment in r/{Subreddit}: {Title}", comment.Subreddit, comment.Root.Title);
                     await _commentProcessor.ProcessCommentAsync(_reddit, comment);
                 }
                 catch (RedditForbiddenException ex)
                 {
-                    _logger.LogError(ex, "Failed to process comment in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
+                    _logger.LogError(ex, "Failed to process comment in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
                 }
                 catch (RedditInternalServerErrorException ex)
                 {
-                    _logger.LogError(ex, "Reddit API 500 error in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
+                    _logger.LogError(ex, "Reddit API error (500) in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
                 }
                 catch (RedditException ex) when (ex.Message.Contains("TooManyRequests"))
                 {
-                    _logger.LogError(ex, "Rate limited in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
+                    _logger.LogError(ex, "Rate limited in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
                 }
             }
         }
 
         private async void Me_CommentHistoryUpdated(object? sender, CommentsUpdateEventArgs e)
         {
-            _logger.LogDebug("New comment history activity");
+            _logger.LogTrace("Comment history updated: {Count} comments", e.NewComments.Count);
             await ProcessCommentHistoryAsync(e.NewComments);
         }
 
@@ -201,10 +201,11 @@ namespace SongAcronymBot.Core.Services
                     try
                     {
                         await comment.DeleteAsync();
+                        _logger.LogInformation("Deleted downvoted comment in r/{Subreddit} (score: {Score})", comment.Subreddit, comment.Score);
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to delete downvoted comment in {Subreddit} (score: {Score}): {Message}", comment.Subreddit, comment.Score, ex.Message);
+                        _logger.LogError(ex, "Failed to delete downvoted comment in r/{Subreddit} (score: {Score})", comment.Subreddit, comment.Score);
                     }
                 }
             }

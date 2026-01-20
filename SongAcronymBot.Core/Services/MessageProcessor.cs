@@ -43,22 +43,23 @@ namespace SongAcronymBot.Core.Services
 
             if (matches.Count == 0)
             {
+                _logger.LogTrace("No acronym matches for summon from u/{Author}", message.Author);
                 return;
             }
 
             var replyBody = _replyFormatter.BuildReplyBody(matches, message.Author);
 
-            _logger.LogDebug("Reply body: {ReplyBody}", replyBody);
+            _logger.LogDebug("Generated reply: {ReplyBody}", replyBody);
 
             try
             {
                 var comment = reddit.Comment($"t1_{message.Id}").About();
                 await comment.ReplyAsync(replyBody);
-                _logger.LogInformation("Replied to message in {Subreddit}", comment.Subreddit);
+                _logger.LogInformation("Replied to summon in r/{Subreddit} by u/{Author}", comment.Subreddit, message.Author);
             }
             catch (RedditForbiddenException ex)
             {
-                _logger.LogError(ex, "Failed to reply to message from {Author} (subject: {Subject}): {Message}", message.Author, message.Subject, ex.Message);
+                _logger.LogError(ex, "Failed to reply to summon from u/{Author}", message.Author);
             }
         }
 
@@ -126,9 +127,11 @@ namespace SongAcronymBot.Core.Services
                 if (parent.UpVotes < 5)
                 {
                     await parent.DeleteAsync();
+                    _logger.LogDebug("Deleted low-score comment (score: {Score}) via 'bad bot' from u/{Author}", parent.UpVotes, message.Author);
                 }
 
                 await _optOutManager.AddOptedOutRedditorAsync(message.Author);
+                _logger.LogInformation("Processed 'bad bot' command from u/{Author}", message.Author);
                 return true;
             }
 
@@ -153,19 +156,21 @@ namespace SongAcronymBot.Core.Services
             {
                 await parent.DeleteAsync();
                 await _optOutManager.AddOptedOutRedditorAsync(message.Author);
+                _logger.LogInformation("Processed 'delete' command from u/{Author} in r/{Subreddit}", message.Author, parent.Subreddit);
                 return true;
             }
 
             return false;
         }
 
-        private static bool IsNotSummon(Reddit.Things.Message message)
+        private bool IsNotSummon(Reddit.Things.Message message)
         {
             if (message.Subject == "username mention" && message.WasComment)
             {
                 return false;
             }
 
+            _logger.LogTrace("Skipping non-summon message from u/{Author} (subject: {Subject})", message.Author, message.Subject);
             return true;
         }
     }

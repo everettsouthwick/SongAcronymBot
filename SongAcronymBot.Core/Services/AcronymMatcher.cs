@@ -16,6 +16,7 @@ namespace SongAcronymBot.Core.Services
         /// <inheritdoc/>
         public List<AcronymMatch> FindMatches(Comment comment, List<EnrichedAcronym> acronyms)
         {
+            _logger.LogTrace("Checking {Count} acronyms in r/{Subreddit}", acronyms.Count, comment.Subreddit);
             var matches = new List<AcronymMatch>();
 
             foreach (var acronym in acronyms)
@@ -57,14 +58,14 @@ namespace SongAcronymBot.Core.Services
                     {
                         if (IsUnrepliedAndUndefined(comment, acronym))
                         {
-                            _logger.LogDebug("Matched word: {Match}", match);
+                            _logger.LogDebug("Acronym match found: {Acronym}", match);
                             return true;
                         }
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // Do nothing
+                    _logger.LogWarning(ex, "Acronym matching error in r/{Subreddit} for '{Acronym}'", comment.Subreddit, acronym.AcronymText);
                 }
             }
 
