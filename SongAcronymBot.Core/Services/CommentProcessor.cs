@@ -56,11 +56,11 @@ namespace SongAcronymBot.Core.Services
             }
             catch (RedditForbiddenException ex)
             {
-                _logger.LogError(ex, "Failed to reply - forbidden", ex.Message);
+                _logger.LogError(ex, "Failed to reply in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
             }
             catch (RedditControllerException ex)
             {
-                _logger.LogError(ex, "Failed to reply - controller error: {Message}", ex.Message);
+                _logger.LogError(ex, "Failed to reply in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
             }
         }
 
@@ -113,7 +113,7 @@ namespace SongAcronymBot.Core.Services
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to reply to opt-out");
+                        _logger.LogError(ex, "Failed to reply to opt-out for user {Author}", comment.Author);
                     }
                     return true;
                 }
@@ -127,7 +127,7 @@ namespace SongAcronymBot.Core.Services
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to reply to opt-in");
+                        _logger.LogError(ex, "Failed to reply to opt-in for user {Author}", comment.Author);
                     }
                     return true;
                 }

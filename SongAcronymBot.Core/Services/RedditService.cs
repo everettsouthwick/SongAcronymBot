@@ -157,7 +157,7 @@ namespace SongAcronymBot.Core.Services
                 }
                 catch (RedditForbiddenException ex)
                 {
-                    _logger.LogError(ex, "Failed to process message");
+                    _logger.LogError(ex, "Failed to process message from {Author} (subject: {Subject}): {Message}", message.Author, message.Subject, ex.Message);
                 }
             }
         }
@@ -173,15 +173,15 @@ namespace SongAcronymBot.Core.Services
                 }
                 catch (RedditForbiddenException ex)
                 {
-                    _logger.LogError(ex, "Failed to process comment");
+                    _logger.LogError(ex, "Failed to process comment in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
                 }
                 catch (RedditInternalServerErrorException ex)
                 {
-                    _logger.LogError(ex, "Reddit API returned 500 error while processing comment");
+                    _logger.LogError(ex, "Reddit API 500 error in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
                 }
                 catch (RedditException ex) when (ex.Message.Contains("TooManyRequests"))
                 {
-                    _logger.LogError(ex, "Rate limited by Reddit API");
+                    _logger.LogError(ex, "Rate limited in {Subreddit} by {Author}: {Message}", comment.Subreddit, comment.Author, ex.Message);
                 }
             }
         }
@@ -204,7 +204,7 @@ namespace SongAcronymBot.Core.Services
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to delete comment");
+                        _logger.LogError(ex, "Failed to delete downvoted comment in {Subreddit} (score: {Score}): {Message}", comment.Subreddit, comment.Score, ex.Message);
                     }
                 }
             }

@@ -58,7 +58,7 @@ namespace SongAcronymBot.Core.Services
             }
             catch (RedditForbiddenException ex)
             {
-                _logger.LogError(ex, "Failed to reply");
+                _logger.LogError(ex, "Failed to reply to message from {Author} (subject: {Subject}): {Message}", message.Author, message.Subject, ex.Message);
             }
         }
 
