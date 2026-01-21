@@ -65,7 +65,7 @@ namespace SongAcronymBot.Core.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Acronym matching error in r/{Subreddit} for '{Acronym}'", comment.Subreddit, acronym.AcronymText);
+                    _logger.LogWarning(ex, "Acronym matching error in r/{Subreddit} for '{Acronym}': {Permalink}", comment.Subreddit, acronym.AcronymText, comment.Permalink);
                 }
             }
 
