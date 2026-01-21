@@ -55,7 +55,7 @@ namespace SongAcronymBot.Core.Services
             {
                 var comment = reddit.Comment($"t1_{message.Id}").About();
                 await comment.ReplyAsync(replyBody);
-                _logger.LogInformation("Replied to summon in r/{Subreddit} by u/{Author}", comment.Subreddit, message.Author);
+                _logger.LogInformation("Replied to summon in r/{Subreddit} by u/{Author}: {Permalink}", comment.Subreddit, message.Author, comment.Permalink);
             }
             catch (RedditForbiddenException ex)
             {
@@ -156,7 +156,7 @@ namespace SongAcronymBot.Core.Services
             {
                 await parent.DeleteAsync();
                 await _optOutManager.AddOptedOutRedditorAsync(message.Author);
-                _logger.LogInformation("Processed 'delete' command from u/{Author} in r/{Subreddit}", message.Author, parent.Subreddit);
+                _logger.LogInformation("Processed 'delete' command from u/{Author} in r/{Subreddit}: {Permalink}", message.Author, parent.Subreddit, parent.Permalink);
                 return true;
             }
 

@@ -127,14 +127,14 @@ namespace SongAcronymBot.Core.Services
                         var newBody = comment.Body + promoText;
                         await comment.EditAsync(newBody);
 
-                        _logger.LogInformation("Added promotional message in r/{Subreddit}", comment.Subreddit);
+                        _logger.LogInformation("Added promotional message in r/{Subreddit}: {Permalink}", comment.Subreddit, comment.Permalink);
 
                         // Only edit one comment per check
                         return;
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to add promotional message in r/{Subreddit}", comment.Subreddit);
+                        _logger.LogError(ex, "Failed to add promotional message in r/{Subreddit}: {Permalink}", comment.Subreddit, comment.Permalink);
                     }
                 }
             }
@@ -173,15 +173,15 @@ namespace SongAcronymBot.Core.Services
                 }
                 catch (RedditForbiddenException ex)
                 {
-                    _logger.LogError(ex, "Failed to process comment in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
+                    _logger.LogError(ex, "Failed to process comment in r/{Subreddit} by u/{Author}: {Permalink}", comment.Subreddit, comment.Author, comment.Permalink);
                 }
                 catch (RedditInternalServerErrorException ex)
                 {
-                    _logger.LogError(ex, "Reddit API error (500) in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
+                    _logger.LogError(ex, "Reddit API error (500) in r/{Subreddit} by u/{Author}: {Permalink}", comment.Subreddit, comment.Author, comment.Permalink);
                 }
                 catch (RedditException ex) when (ex.Message.Contains("TooManyRequests"))
                 {
-                    _logger.LogError(ex, "Rate limited in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
+                    _logger.LogError(ex, "Rate limited in r/{Subreddit} by u/{Author}: {Permalink}", comment.Subreddit, comment.Author, comment.Permalink);
                 }
             }
         }
@@ -201,11 +201,11 @@ namespace SongAcronymBot.Core.Services
                     try
                     {
                         await comment.DeleteAsync();
-                        _logger.LogInformation("Deleted downvoted comment in r/{Subreddit} (score: {Score})", comment.Subreddit, comment.Score);
+                        _logger.LogInformation("Deleted downvoted comment in r/{Subreddit} (score: {Score}): {Permalink}", comment.Subreddit, comment.Score, comment.Permalink);
                     }
                     catch (RedditForbiddenException ex)
                     {
-                        _logger.LogError(ex, "Failed to delete downvoted comment in r/{Subreddit} (score: {Score})", comment.Subreddit, comment.Score);
+                        _logger.LogError(ex, "Failed to delete downvoted comment in r/{Subreddit} (score: {Score}): {Permalink}", comment.Subreddit, comment.Score, comment.Permalink);
                     }
                 }
             }

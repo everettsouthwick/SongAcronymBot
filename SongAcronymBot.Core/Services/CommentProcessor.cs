@@ -53,15 +53,15 @@ namespace SongAcronymBot.Core.Services
             try
             {
                 await comment.ReplyAsync(replyBody);
-                _logger.LogInformation("Replied to comment in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
+                _logger.LogInformation("Replied to comment in r/{Subreddit} by u/{Author}: {Permalink}", comment.Subreddit, comment.Author, comment.Permalink);
             }
             catch (RedditForbiddenException ex)
             {
-                _logger.LogError(ex, "Failed to reply to comment in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
+                _logger.LogError(ex, "Failed to reply to comment in r/{Subreddit} by u/{Author}: {Permalink}", comment.Subreddit, comment.Author, comment.Permalink);
             }
             catch (RedditControllerException ex)
             {
-                _logger.LogError(ex, "Failed to reply to comment in r/{Subreddit} by u/{Author}", comment.Subreddit, comment.Author);
+                _logger.LogError(ex, "Failed to reply to comment in r/{Subreddit} by u/{Author}: {Permalink}", comment.Subreddit, comment.Author, comment.Permalink);
             }
         }
 
