@@ -40,33 +40,20 @@ namespace SongAcronymBot.Core.Services
                 return false;
             }
 
-            var body = comment.Body.ToLower();
-            var acronymName = acronym.AcronymText.ToLower();
-
-            index = body.IndexOf(acronymName);
-            if (index != -1)
+            try
             {
-                try
+                if (IsAcronymInText(comment.Body, acronym.AcronymText, out index))
                 {
-                    var matchStart = index == 0 ? 0 : index - 1;
-                    var matchLength = acronymName.Length + 2 > body.Length ? acronymName.Length : acronymName.Length + 2;
-                    var match = body.Substring(matchStart, matchLength);
-                    match = string.Concat(Array.FindAll(match.ToCharArray(), char.IsLetterOrDigit));
-                    acronymName = string.Concat(Array.FindAll(acronymName.ToCharArray(), char.IsLetterOrDigit));
-
-                    if (match == acronymName)
+                    if (IsUnrepliedAndUndefined(comment, acronym))
                     {
-                        if (IsUnrepliedAndUndefined(comment, acronym))
-                        {
-                            _logger.LogDebug("Acronym match found: {Acronym}", match);
-                            return true;
-                        }
+                        _logger.LogDebug("Acronym match found: {Acronym}", acronym.AcronymText);
+                        return true;
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Acronym matching error in r/{Subreddit} for '{Acronym}': {Permalink}", comment.Subreddit, acronym.AcronymText, comment.Permalink);
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Acronym matching error in r/{Subreddit} for '{Acronym}': {Permalink}", comment.Subreddit, acronym.AcronymText, comment.Permalink);
             }
 
             return false;
@@ -146,6 +133,46 @@ namespace SongAcronymBot.Core.Services
             }
 
             return children;
+        }
+
+        /// <summary>
+        /// Checks if an acronym exists as a standalone word in the given text.
+        /// This method is internal to allow unit testing without requiring a Reddit Comment object.
+        /// </summary>
+        /// <param name="text">The text to search in.</param>
+        /// <param name="acronymText">The acronym to search for.</param>
+        /// <param name="index">The index where the acronym was found, or -1 if not found.</param>
+        /// <returns>True if the acronym is found as a standalone word (not part of another word).</returns>
+        internal static bool IsAcronymInText(string text, string acronymText, out int index)
+        {
+            index = -1;
+
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(acronymText))
+            {
+                return false;
+            }
+
+            var body = text.ToLower();
+            var acronymName = acronymText.ToLower();
+
+            index = body.IndexOf(acronymName);
+            if (index != -1)
+            {
+                var matchStart = index == 0 ? 0 : index - 1;
+                var remainingLength = body.Length - matchStart;
+                var desiredLength = acronymName.Length + (index == 0 ? 1 : 2); // +1 after when at start, +2 for before and after otherwise
+                var matchLength = Math.Min(desiredLength, remainingLength);
+                var match = body.Substring(matchStart, matchLength);
+                match = string.Concat(Array.FindAll(match.ToCharArray(), char.IsLetterOrDigit));
+                acronymName = string.Concat(Array.FindAll(acronymName.ToCharArray(), char.IsLetterOrDigit));
+
+                if (match == acronymName)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
