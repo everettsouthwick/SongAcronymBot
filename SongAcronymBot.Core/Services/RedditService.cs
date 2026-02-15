@@ -87,8 +87,8 @@ namespace SongAcronymBot.Core.Services
         {
             try
             {
-                // 1% chance to edit a comment this hour
-                if (_random.Next(100) >= 1)
+                // 2% chance to edit a comment this hour
+                if (_random.Next(100) >= 2)
                 {
                     _logger.LogDebug("Skipping promotional message check (random skip)");
                     return;
