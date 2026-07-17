@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Real config with secrets - use appsettings.example.json as a template
+SongAcronymBot.Core/appsettings.json
